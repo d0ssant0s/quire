@@ -11,7 +11,28 @@ import { chromium } from 'playwright';
 
 const site = new URL('../examples/basic/dist/', import.meta.url).pathname;
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript' };
+// A stand-in search endpoint: "fail" answers 500, a query starting "slow"
+// answers late, and anything else matches titles and excerpts.
+const documents = [
+  { title: 'Home', url: '/', excerpt: 'The example site' },
+  { title: 'Reading styles', url: '/guide/', section: 'Guide', excerpt: 'Lists, code and tables' },
+  { title: 'Tables', url: '/guide/#tables', section: 'Guide', excerpt: 'Tables scroll in their frame' },
+];
+function search(request, response) {
+  const query = new URL(request.url, 'http://x').searchParams.get('q') ?? '';
+  if (query === 'fail') return response.writeHead(500).end();
+  const slow = query.startsWith('slow');
+  const answer = () => {
+    const results = slow
+      ? [{ title: 'Stale', url: '/stale/' }]
+      : documents.filter((entry) => `${entry.title} ${entry.excerpt}`.toLowerCase().includes(query.toLowerCase()));
+    response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ results }));
+  };
+  if (slow) setTimeout(answer, 600);
+  else answer();
+}
 const server = createServer((request, response) => {
+  if (request.url.startsWith('/api/search')) return search(request, response);
   let path = join(site, decodeURIComponent(new URL(request.url, 'http://x').pathname));
   if (existsSync(path) && statSync(path).isDirectory()) path = join(path, 'index.html');
   if (!path.startsWith(site) || !existsSync(path)) return response.writeHead(404).end();
@@ -166,10 +187,74 @@ else {
 }
 await reading.close();
 
+// Search: Ctrl+K opens the dialog with the input focused; results come from the
+// endpoint and the keyboard opens one; a later query replaces a slower one;
+// an empty answer and a failing endpoint say so; Escape returns focus.
+const finder = await open({ width: 1280 });
+await finder.waitForFunction(() => document.querySelector('[data-quire-search]') && !document.querySelector('astro-island[ssr]'));
+await finder.keyboard.press('Control+K');
+await finder.waitForSelector('[role=dialog]');
+expect('Ctrl+K focuses the search input', await finder.evaluate(() => document.activeElement?.tagName), 'INPUT');
+const options = () => finder.$$eval('[role=dialog] [role=option]', (items) => items.map((item) => item.textContent.trim()));
+await finder.keyboard.type('scrol');
+await finder.waitForSelector('[role=dialog] [role=option]');
+expect('search lists the endpoint results', (await options()).join('|'), 'TablesGuide · Tables scroll in their frame');
+// Each query replaces the last in one step, as a paste does, so no shorter
+// query in between cancels the slow request first.
+await finder.fill('[role=dialog] input', 'slowx');
+await finder.waitForTimeout(250);
+await finder.fill('[role=dialog] input', 'home');
+await finder.waitForTimeout(900);
+expect('a later query replaces a slower earlier one', (await options()).join('|'), 'HomeThe example site');
+await finder.keyboard.press('Control+A');
+await finder.keyboard.type('zzz');
+await finder.waitForSelector('[role=dialog] [role=status]');
+expect('an empty answer says so', await finder.textContent('[role=dialog] [role=status]'), 'No results for “zzz”.');
+await finder.keyboard.press('Control+A');
+await finder.keyboard.type('fail');
+await finder.waitForSelector('[role=dialog] [role=alert]');
+expect('a failing endpoint offers a retry', await finder.$eval('[role=dialog] [role=alert] button', (button) => button.textContent), 'Retry');
+await finder.keyboard.press('Escape');
+await finder.waitForSelector('[role=dialog]', { state: 'detached' });
+expect('Escape returns focus to the search button', await finder.evaluate(() => document.activeElement?.hasAttribute('data-quire-search')), true);
+await finder.keyboard.press('Control+K');
+await finder.keyboard.type('home');
+await finder.waitForSelector('[role=dialog] [role=option]');
+await finder.keyboard.press('ArrowDown');
+await Promise.all([finder.waitForURL(`${base}/`), finder.keyboard.press('Enter')]);
+expect('Enter opens the chosen result', new URL(finder.url()).pathname, '/');
+await finder.close();
+
+// What a reader downloads: the page's scripts, compressed, before and after
+// the search is first used. The budget catches a framework or kit grown by
+// accident; the figures are printed for comparison.
+const { gzipSync } = await import('node:zlib');
+const weigh = async (use) => {
+  const page = await browser.newPage();
+  const sizes = new Map();
+  page.on('response', async (response) => {
+    if (response.request().resourceType() !== 'script') return;
+    sizes.set(response.url(), gzipSync(await response.body()).length);
+  });
+  await page.goto(`${base}/guide/`);
+  await page.waitForFunction(() => !document.querySelector('astro-island[ssr]'));
+  if (use) {
+    await page.keyboard.press('Control+K');
+    await page.keyboard.type('tables');
+    await page.waitForSelector('[role=dialog] [role=option]');
+  }
+  await page.waitForLoadState('networkidle');
+  await page.close();
+  return [...sizes.values()].reduce((sum, size) => sum + size, 0);
+};
+const [loaded, used] = [await weigh(false), await weigh(true)];
+console.log(`check-browser: scripts ${(loaded / 1024).toFixed(1)} kB gzip on load, ${(used / 1024).toFixed(1)} kB after a search`);
+if (used > 80 * 1024) problems.push(`the page downloads ${(used / 1024).toFixed(1)} kB of compressed scripts, over the 80 kB budget`);
+
 await browser.close();
 server.close();
 if (problems.length) {
   for (const problem of problems) console.error(`check-browser: ${problem}`);
   process.exit(1);
 }
-console.log('check-browser: themes, code, shell, menu, theme switch, contents, tables and source lines ok');
+console.log('check-browser: themes, code, shell, menu, theme switch, contents, search, tables and source lines ok');
