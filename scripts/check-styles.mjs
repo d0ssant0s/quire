@@ -7,7 +7,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const root = new URL('..', import.meta.url).pathname;
-const styles = join(root, 'packages/quire/styles');
+const styles = join(root, 'styles');
 const read = (file) => readFileSync(join(styles, file), 'utf8');
 // Rules only: comments and the paths in @import and @source are not selectors.
 const uncommented = (css) => css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^@(import|source)\s[^;]*;/gm, '');
@@ -39,7 +39,7 @@ for (const file of readdirSync(styles).filter((name) => name.endsWith('.css'))) 
 
 // Components are styled with Tailwind utilities, and their colours come only
 // from the tokens: no arbitrary colour values and no Tailwind palette colours.
-const sources = join(root, 'packages/quire/src');
+const sources = join(root, 'src');
 const palette = /\b(?:bg|text|border|ring|outline|fill|stroke|shadow|divide|decoration|accent|caret|from|via|to)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b/;
 const arbitraryColour = /-\[(?:#|rgb|hsl|oklch|oklab|lab|lch|color)/;
 for (const file of readdirSync(sources, { recursive: true }).filter((name) => /\.(astro|vue|ts)$/.test(name))) {
