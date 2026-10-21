@@ -61,4 +61,13 @@ mise exec -- npm run check
 
 `check` builds the example and verifies that every colour token is defined
 once as `light-dark()`, that the theme reads only declared tokens, and that
-Tailwind generates the utilities the example uses and no others.
+Tailwind generates the utilities the example uses and no others. It also packs
+the package and verifies that it ships `LICENSE` and `THIRD-PARTY-NOTICES.md`.
+
+## License
+
+MIT, copyright d0ssant0s; see [LICENSE](LICENSE). The colour palette is
+adapted from [t3code](https://github.com/pingdotgg/t3code) (MIT, T3 Tools
+Inc.); [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) reproduces its notice.
+The package ships both files, and `packages/quire` holds the copies npm
+publishes, which `check` keeps identical to the ones here.

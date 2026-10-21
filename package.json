@@ -1,6 +1,7 @@
 {
   "name": "quire-workspace",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "workspaces": [
     "packages/*",
@@ -8,6 +9,6 @@
   ],
   "scripts": {
     "build": "npm --workspace examples/basic run build",
-    "check": "npm run build && node scripts/check-tokens.mjs"
+    "check": "npm run build && node scripts/check-tokens.mjs && node scripts/check-license.mjs"
   }
 }
