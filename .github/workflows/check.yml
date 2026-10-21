@@ -24,3 +24,19 @@ jobs:
       - run: mise exec -- npm run check
       - run: mise exec -- npx playwright install --with-deps chromium
       - run: mise exec -- npm run check:browser
+
+  # A release tag that passed the checks gets a GitHub release page, whose notes
+  # are the version's section of CHANGELOG.md. Only this job may write.
+  release:
+    needs: check
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+      - run: mise exec -- node scripts/release-notes.mjs "${GITHUB_REF_NAME#v}" > "$RUNNER_TEMP/notes.md"
+      - run: gh release create "$GITHUB_REF_NAME" --title "quire ${GITHUB_REF_NAME#v}" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+        env:
+          GH_TOKEN: ${{ github.token }}
