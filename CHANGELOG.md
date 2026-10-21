@@ -5,6 +5,8 @@ the README. Before 1.0, a minor version marks a breaking change.
 
 ## Unreleased
 
+## 0.1.0 (2026-10-21)
+
 - The page shell as Astro components: `ThemeScript`, `Header`, `ThemeSwitch`,
   `Page`, `Sidebar` and `Contents`.
 - Components and the shell are styled with Tailwind utilities; quire requires
