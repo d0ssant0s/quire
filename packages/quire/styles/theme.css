@@ -1,0 +1,75 @@
+/* Tailwind's view of the quire tokens. A site's stylesheet imports Tailwind and
+   then this file:
+
+     @import 'tailwindcss';
+     @import '@d0ssant0s/quire/theme.css';
+
+   Utilities such as bg-surface, text-muted and border-line then follow the
+   tokens and the reader's theme. */
+
+@import './tokens.css';
+
+/* Tailwind skips node_modules when it looks for class names, so the shell's own
+   components are named here, relative to this file. */
+@source '../src';
+
+/* dark: utilities follow the page's theme switch, or the reader's scheme on a
+   page without one. */
+@custom-variant dark {
+  &:where([data-theme='dark'], [data-theme='dark'] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme]), :root:not([data-theme]) *) {
+      @slot;
+    }
+  }
+}
+
+/* inline: utilities refer to the tokens themselves, so a site that overrides a
+   token on any element re-themes everything beneath it. */
+@theme inline {
+  --font-sans: var(--quire-font-sans);
+  --font-mono: var(--quire-font-mono);
+  --color-bg: var(--quire-bg);
+  --color-surface: var(--quire-surface);
+  --color-subtle: var(--quire-subtle);
+  --color-fg: var(--quire-fg);
+  --color-muted: var(--quire-muted);
+  --color-faint: var(--quire-faint);
+  --color-line: var(--quire-border);
+  --color-line-strong: var(--quire-border-strong);
+  --color-accent: var(--quire-accent);
+  --color-accent-soft: var(--quire-accent-soft);
+  --color-ok: var(--quire-ok);
+  --color-ok-soft: var(--quire-ok-soft);
+  --color-warn: var(--quire-warn);
+  --color-warn-soft: var(--quire-warn-soft);
+  --color-danger: var(--quire-danger);
+  --color-danger-soft: var(--quire-danger-soft);
+  --color-info: var(--quire-info);
+  --color-info-soft: var(--quire-info-soft);
+  --color-neutral: var(--quire-neutral);
+  --color-neutral-soft: var(--quire-neutral-soft);
+  --radius-card: var(--quire-radius);
+}
+
+@layer base {
+  html {
+    background: var(--quire-bg);
+    color: var(--quire-fg);
+    font-family: var(--quire-font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    scroll-padding-top: calc(var(--quire-header) + 16px);
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--quire-accent) 25%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--quire-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}

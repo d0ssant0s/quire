@@ -1,0 +1,27 @@
+{
+  "name": "@d0ssant0s/quire",
+  "version": "0.0.0",
+  "description": "A documentation-agnostic Astro and Tailwind shell for reading Markdown sites",
+  "type": "module",
+  "keywords": [
+    "astro-integration",
+    "documentation",
+    "tailwindcss"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./tokens.css": "./styles/tokens.css",
+    "./theme.css": "./styles/theme.css"
+  },
+  "files": [
+    "src",
+    "styles"
+  ],
+  "peerDependencies": {
+    "astro": "^7.4.0",
+    "tailwindcss": "^4.3.3"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "4.3.3"
+  }
+}

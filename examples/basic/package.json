@@ -1,0 +1,14 @@
+{
+  "name": "quire-example-basic",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build"
+  },
+  "dependencies": {
+    "astro": "7.4.0",
+    "@d0ssant0s/quire": "*",
+    "tailwindcss": "4.3.3"
+  }
+}

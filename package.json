@@ -1,0 +1,13 @@
+{
+  "name": "quire-workspace",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "build": "npm --workspace examples/basic run build",
+    "check": "npm run build && node scripts/check-tokens.mjs"
+  }
+}
