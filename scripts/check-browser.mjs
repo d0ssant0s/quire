@@ -67,23 +67,24 @@ if (lightCode === (await codeColour({ scheme: 'dark' }))) problems.push('code ke
 
 // The shell: sidebar and rail in the grid on a desktop, off the page on a phone.
 const desktop = await open({ width: 1280 });
-expect('desktop sidebar position', await style(desktop, '.quire-sidebar', 'position'), 'sticky');
-expect('desktop rail display', await style(desktop, '.quire-rail', 'display'), 'block');
+expect('desktop shell has three columns', await desktop.$eval('[data-quire-shell]', (shell) => getComputedStyle(shell).gridTemplateColumns.split(' ').length), 3);
+expect('desktop sidebar position', await style(desktop, '[data-quire-sidebar]', 'position'), 'sticky');
+expect('desktop rail display', await style(desktop, '[data-quire-rail]', 'display'), 'block');
 await desktop.close();
 
 const phone = await open({ width: 375 });
-const sidebar = await phone.$eval('.quire-sidebar', (element) => element.getBoundingClientRect().right);
+const sidebar = await phone.$eval('[data-quire-sidebar]', (element) => element.getBoundingClientRect().right);
 if (sidebar > 0) problems.push(`phone sidebar is on the page (right edge ${sidebar}px)`);
-expect('phone rail display', await style(phone, '.quire-rail', 'display'), 'none');
+expect('phone rail display', await style(phone, '[data-quire-rail]', 'display'), 'none');
 const overflow = await phone.evaluate(() => document.documentElement.scrollWidth - innerWidth);
 if (overflow > 0) problems.push(`the phone page is ${overflow}px wider than the screen`);
 expect('table scrolls in its frame', await style(phone, '.quire-prose table', 'overflow-x'), 'auto');
 await phone.evaluate(() => document.documentElement.setAttribute('data-sidebar-open', ''));
 // The sidebar slides in; measure once the slide has finished.
-await phone.waitForFunction(() => document.querySelector('.quire-sidebar').getAnimations().length === 0);
-const opened = await phone.$eval('.quire-sidebar', (element) => element.getBoundingClientRect().left);
+await phone.waitForFunction(() => document.querySelector('[data-quire-sidebar]').getAnimations().length === 0);
+const opened = await phone.$eval('[data-quire-sidebar]', (element) => element.getBoundingClientRect().left);
 expect('phone sidebar opens at the left edge', opened, 0);
-expect('phone scrim shows behind the open sidebar', await style(phone, '.quire-scrim', 'display'), 'block');
+expect('phone scrim shows behind the open sidebar', await style(phone, '[data-quire-scrim]', 'display'), 'block');
 await phone.close();
 
 // A linked source line is highlighted and numbered.
@@ -93,8 +94,77 @@ expect('source line number', await style(source, '#L2', 'content', '::before'), 
 await source.close();
 
 const still = await open({ width: 375, motion: 'reduce' });
-expect('sidebar under reduced motion', await style(still, '.quire-sidebar', 'transition-duration'), '0s');
+expect('sidebar under reduced motion', await style(still, '[data-quire-sidebar]', 'transition-duration'), '0s');
 await still.close();
+
+// The menu button collapses the sidebar on a desktop, and remembers it.
+const menu = await open({ width: 1280 });
+const attribute = (page, name) => page.evaluate((value) => document.documentElement.hasAttribute(value), name);
+expect('desktop menu starts expanded', await menu.getAttribute('[data-quire-menu]', 'aria-expanded'), 'true');
+await menu.click('[data-quire-menu]');
+expect('desktop menu collapses the sidebar', await style(menu, '[data-quire-sidebar]', 'display'), 'none');
+const columns = (page) => page.$eval('[data-quire-shell]', (shell) => getComputedStyle(shell).gridTemplateColumns.split(' ').length);
+expect('collapsed shell keeps the article and the rail', await columns(menu), 2);
+expect('collapsed menu is not expanded', await menu.getAttribute('[data-quire-menu]', 'aria-expanded'), 'false');
+await menu.reload();
+expect('collapsed sidebar is remembered', await attribute(menu, 'data-sidebar-collapsed'), true);
+expect('remembered menu is not expanded', await menu.getAttribute('[data-quire-menu]', 'aria-expanded'), 'false');
+await menu.click('[data-quire-menu]');
+expect('desktop menu restores the sidebar', await style(menu, '[data-quire-sidebar]', 'display'), 'block');
+await menu.close();
+
+// On a phone it slides the sidebar over the page; Escape and the scrim close it.
+const drawer = await open({ width: 375, motion: 'reduce' });
+await drawer.click('[data-quire-menu]');
+expect('phone menu opens the sidebar', await attribute(drawer, 'data-sidebar-open'), true);
+expect('open menu is expanded', await drawer.getAttribute('[data-quire-menu]', 'aria-expanded'), 'true');
+await drawer.keyboard.press('Escape');
+expect('Escape closes the sidebar', await attribute(drawer, 'data-sidebar-open'), false);
+expect('Escape returns focus to the menu', await drawer.evaluate(() => document.activeElement?.hasAttribute('data-quire-menu')), true);
+await drawer.click('[data-quire-menu]');
+await drawer.mouse.click(360, 400);
+expect('the scrim closes the sidebar', await attribute(drawer, 'data-sidebar-open'), false);
+await drawer.close();
+
+// The theme switch steps through the system scheme, light and dark, and
+// remembers a pinned choice.
+const themed = await open({ scheme: 'dark' });
+const theme = (page) => page.evaluate(() => document.documentElement.dataset.theme ?? null);
+const icon = (page) => page.$$eval('[data-theme-icon]', (icons) => icons.filter((element) => getComputedStyle(element).display !== 'none').map((element) => element.dataset.themeIcon).join());
+expect('theme starts from the system', await theme(themed), null);
+expect('system theme icon', await icon(themed), 'system');
+expect('system theme label', await themed.getAttribute('[data-quire-theme]', 'aria-label'), 'Theme: system. Switch to light');
+await themed.click('[data-quire-theme]');
+expect('switch pins light', await theme(themed), 'light');
+expect('pinned light on a dark system', await style(themed, 'html', 'background-color'), 'rgb(252, 252, 252)');
+expect('light theme icon', await icon(themed), 'light');
+await themed.reload();
+expect('pinned light is remembered', await theme(themed), 'light');
+await themed.click('[data-quire-theme]');
+expect('switch pins dark', await theme(themed), 'dark');
+await themed.click('[data-quire-theme]');
+expect('switch returns to the system', await theme(themed), null);
+await themed.reload();
+expect('the system choice is remembered', await theme(themed), null);
+await themed.close();
+
+// The sidebar marks the current page; the rail lists the page's headings and
+// marks the one being read.
+const reading = await open({ width: 1440 });
+expect('current page link', await reading.$eval('[data-quire-nav] [aria-current=page]', (link) => link.getAttribute('href')), '/guide/');
+expect('the group holding the current page is open', await reading.$eval('[data-quire-nav] [aria-current=page]', (link) => link.closest('details')?.open), true);
+const listed = await reading.$$eval('[data-quire-contents] a', (links) => links.map((link) => link.hash.slice(1)));
+const headings = await reading.$$eval('.quire-prose :is(h2, h3)[id]', (elements) => elements.map((element) => element.id));
+expect('contents lists the headings', listed.join(), headings.join());
+if (listed.length < 2) problems.push('the example needs two headings to check the contents marker');
+else {
+  await reading.evaluate((id) => {
+    document.getElementById(id).scrollIntoView();
+    dispatchEvent(new Event('scroll'));
+  }, listed[1]);
+  expect('contents marks the heading being read', await reading.$eval('[data-quire-contents] a[aria-current=true]', (link) => link.hash.slice(1)), listed[1]);
+}
+await reading.close();
 
 await browser.close();
 server.close();
@@ -102,4 +172,4 @@ if (problems.length) {
   for (const problem of problems) console.error(`check-browser: ${problem}`);
   process.exit(1);
 }
-console.log('check-browser: themes, code, shell, tables and source lines ok');
+console.log('check-browser: themes, code, shell, menu, theme switch, contents, tables and source lines ok');

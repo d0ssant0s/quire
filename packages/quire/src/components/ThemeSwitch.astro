@@ -1,0 +1,47 @@
+---
+// Steps the page through the system scheme, light and dark. Light and dark pin
+// data-theme and are remembered; the system scheme removes the attribute, so
+// light-dark() follows the reader's setting again. The icon shows the choice.
+import IconButton from './IconButton.astro';
+
+interface Props {
+  /** Prefix of the localStorage key `<storage>-theme`; must match ThemeScript's. */
+  storage?: string;
+}
+const { storage = 'quire' } = Astro.props;
+---
+
+<IconButton data-quire-theme data-quire-storage={storage} aria-label="Theme">
+  <svg data-theme-icon="system" class="hidden size-4 theme-system:block" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1.5" /><path d="M6 14h4M8 11v3" /></svg>
+  <svg data-theme-icon="light" class="hidden size-4 theme-light:block" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="2.75" /><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1.06 1.06M11.54 11.54l1.06 1.06M3.4 12.6l1.06-1.06M11.54 4.46l1.06-1.06" /></svg>
+  <svg data-theme-icon="dark" class="hidden size-4 theme-dark:block" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.5A5.75 5.75 0 0 1 6.5 2.5a5.75 5.75 0 1 0 7 7Z" /></svg>
+</IconButton>
+
+<script>
+  const root = document.documentElement;
+  const order = ['system', 'light', 'dark'] as const;
+  type Choice = (typeof order)[number];
+  const current = (): Choice => (root.dataset.theme === 'light' || root.dataset.theme === 'dark' ? root.dataset.theme : 'system');
+  const following = (choice: Choice) => order[(order.indexOf(choice) + 1) % order.length];
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-quire-theme]')];
+  const label = () => {
+    const choice = current();
+    for (const button of buttons) button.setAttribute('aria-label', `Theme: ${choice}. Switch to ${following(choice)}`);
+  };
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      const choice = following(current());
+      const key = `${button.dataset.quireStorage}-theme`;
+      if (choice === 'system') delete root.dataset.theme;
+      else root.dataset.theme = choice;
+      try {
+        if (choice === 'system') localStorage.removeItem(key);
+        else localStorage.setItem(key, choice);
+      } catch {
+        // The choice then lasts only for this page.
+      }
+      label();
+    });
+  }
+  label();
+</script>

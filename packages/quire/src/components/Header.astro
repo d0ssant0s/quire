@@ -1,0 +1,67 @@
+---
+// The page header: a menu button for the sidebar, the site's own content, and
+// the theme switch. The default slot holds the site's name and links; the `end`
+// slot holds controls such as search, before the theme switch.
+import IconButton from './IconButton.astro';
+import ThemeSwitch from './ThemeSwitch.astro';
+
+interface Props {
+  /** Show the menu button; set it on pages whose shell has a sidebar. */
+  menu?: boolean;
+  /** Prefix of the localStorage keys; must match ThemeScript's. */
+  storage?: string;
+  class?: string;
+}
+const { menu = false, storage = 'quire', class: className } = Astro.props;
+---
+
+<header class:list={['sticky top-0 z-30 flex h-(--quire-header) items-center gap-3 border-b border-line bg-bg/85 px-4 backdrop-blur-md', className]}>
+  {menu && (
+    <IconButton data-quire-menu data-quire-storage={storage} aria-controls="quire-sidebar" aria-expanded="false" aria-label="Navigation">
+      <svg class="size-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11" /></svg>
+    </IconButton>
+  )}
+  <slot />
+  <span class="flex-1"></span>
+  <slot name="end" />
+  <ThemeSwitch storage={storage} />
+</header>
+
+<script>
+  // On a wide screen the button collapses the sidebar and remembers it; on a
+  // narrow one it slides the sidebar over the page until the reader closes it.
+  const root = document.documentElement;
+  const wide = matchMedia('(min-width: 64rem)');
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-quire-menu]')];
+  const sync = () => {
+    const open = wide.matches ? !root.hasAttribute('data-sidebar-collapsed') : root.hasAttribute('data-sidebar-open');
+    for (const button of buttons) button.setAttribute('aria-expanded', String(open));
+  };
+  const close = () => {
+    root.removeAttribute('data-sidebar-open');
+    sync();
+  };
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      if (wide.matches) {
+        const collapsed = root.toggleAttribute('data-sidebar-collapsed');
+        try {
+          localStorage.setItem(`${button.dataset.quireStorage}-sidebar`, collapsed ? 'collapsed' : '');
+        } catch {
+          // The choice then lasts only for this page.
+        }
+      } else {
+        root.toggleAttribute('data-sidebar-open');
+      }
+      sync();
+    });
+  }
+  document.querySelector('[data-quire-scrim]')?.addEventListener('click', close);
+  addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !root.hasAttribute('data-sidebar-open')) return;
+    close();
+    buttons[0]?.focus();
+  });
+  wide.addEventListener('change', close);
+  sync();
+</script>

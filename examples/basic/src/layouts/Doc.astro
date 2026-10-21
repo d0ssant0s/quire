@@ -1,31 +1,36 @@
 ---
+import type { MarkdownHeading } from 'astro';
+import type { NavItem } from '@d0ssant0s/quire';
+import Contents from '@d0ssant0s/quire/components/Contents.astro';
+import Header from '@d0ssant0s/quire/components/Header.astro';
+import Page from '@d0ssant0s/quire/components/Page.astro';
+import Sidebar from '@d0ssant0s/quire/components/Sidebar.astro';
+import ThemeScript from '@d0ssant0s/quire/components/ThemeScript.astro';
 import '../styles/site.css';
 
-const { frontmatter } = Astro.props;
+interface Props { frontmatter: { title: string }; headings: MarkdownHeading[] }
+const { frontmatter, headings } = Astro.props;
+const sections: NavItem[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Reading', items: [{ label: 'Guide', href: '/guide/' }] },
+];
 ---
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{frontmatter.title} · quire example</title>
+    <ThemeScript />
   </head>
   <body class="min-h-screen bg-bg text-fg">
-    <div class="quire-shell has-sidebar has-rail mx-auto max-w-[1480px]">
-      <nav class="quire-sidebar h-screen border-r border-line p-5" aria-label="Sections">
-        <p class="font-semibold">Sections</p>
-        <ul class="mt-2 text-muted">
-          <li><a href="/">Home</a></li>
-          <li><a href="/guide/">Guide</a></li>
-        </ul>
-      </nav>
-      <div class="quire-scrim"></div>
-      <main class="min-w-0 px-5 pb-24 pt-7 md:px-12">
-        <h1 class="text-[30px] font-semibold">{frontmatter.title}</h1>
-        <article class="quire-prose mt-7"><slot /></article>
-      </main>
-      <aside class="quire-rail py-8 pr-5" aria-label="On this page">
-        <p class="text-xs font-semibold text-faint uppercase">On this page</p>
-      </aside>
-    </div>
+    <Header menu>
+      <a href="/" class="font-semibold">quire example</a>
+    </Header>
+    <Page class="mx-auto max-w-[1480px]">
+      <Sidebar slot="sidebar" items={sections} current={Astro.url.pathname} />
+      <h1 class="text-[30px] font-semibold">{frontmatter.title}</h1>
+      <article class="quire-prose mt-7"><slot /></article>
+      <Contents slot="rail" headings={headings} />
+    </Page>
   </body>
 </html>

@@ -1,19 +1,20 @@
 # quire
 
-A documentation-agnostic shell for reading Markdown sites built with
-[Astro](https://astro.build) and [Tailwind CSS](https://tailwindcss.com).
+The look and feel and the components for technical-documentation sites built
+with [Astro](https://astro.build) and [Tailwind CSS](https://tailwindcss.com).
 quire knows nothing about the project it presents. A site supplies its own
-content and pages, and quire supplies the theme, the integration and, later,
-the layouts and reading components.
+content, pages and data, and quire supplies the theme, the reading styles, the
+page shell and its components.
 
 quire is an independent project, not affiliated with or endorsed by Astro.
 
 ## Status
 
 Early. The package holds the design tokens, the reading styles for rendered
-Markdown, the page-shell grid, the Tailwind theme over them, and an integration
-that wires Tailwind and dual-theme code highlighting into the build. Layouts,
-navigation, search and the reading components follow.
+Markdown, the Tailwind theme over them, the page shell as Astro components, and
+an integration that wires Tailwind and dual-theme code highlighting into the
+build. Interactive components such as search follow; #3 decides how they are
+built.
 
 ## Use
 
@@ -38,27 +39,68 @@ export default defineConfig({ integrations: [quire()] });
 
 Utilities such as `bg-surface`, `text-muted`, `border-line` and the status
 tones `ok`, `warn`, `danger`, `info` and `neutral`, each with a `-soft`
-background, then follow the tokens.
+background, then follow the tokens. quire requires Tailwind: its components are
+styled with utilities, and `theme.css` names their sources for class detection.
 
-## Classes
+## Components
 
-Every class quire styles starts with `quire-`, so it can't collide with a
-site's own classes or another library's, such as Tailwind's `prose`.
+```astro
+---
+import Contents from '@d0ssant0s/quire/components/Contents.astro';
+import Header from '@d0ssant0s/quire/components/Header.astro';
+import Page from '@d0ssant0s/quire/components/Page.astro';
+import Sidebar from '@d0ssant0s/quire/components/Sidebar.astro';
+import ThemeScript from '@d0ssant0s/quire/components/ThemeScript.astro';
+---
+<html lang="en">
+  <head>
+    <ThemeScript />
+  </head>
+  <body>
+    <Header menu><a href="/">My docs</a></Header>
+    <Page>
+      <Sidebar slot="sidebar" items={sections} current={Astro.url.pathname} />
+      <article class="quire-prose"><slot /></article>
+      <Contents slot="rail" headings={headings} />
+    </Page>
+  </body>
+</html>
+```
+
+| Component | What it does |
+| --- | --- |
+| `ThemeScript` | Restores the reader's theme and collapsed sidebar before first paint; put it in `<head>` |
+| `Header` | The sticky header: a menu button when `menu` is set, the default slot for the site's name and links, an `end` slot for controls such as search, and the theme switch |
+| `ThemeSwitch` | Steps through the system scheme, light and dark, and remembers a pinned choice; the header includes it |
+| `Page` | The grid: a `sidebar` slot, the article, and a `rail` slot that appears once there is room; `wide` gives the article the whole width |
+| `Sidebar` | Section navigation from a tree of `NavItem` links and groups, marking the current page |
+| `Contents` | The page's headings, from Astro's Markdown headings, marking the one being read |
+
+`ThemeScript`, `Header` and `ThemeSwitch` take a `storage` prefix for their
+`localStorage` keys, `<storage>-theme` and `<storage>-sidebar`; the default is
+`quire`. The menu button and the theme switch are small scripts in their
+components and need no framework.
+
+On the root element, `data-theme` pins the scheme, `data-sidebar-open` shows
+the sidebar on a phone and `data-sidebar-collapsed` hides it on a desktop. The
+variants `sidebar-open:`, `sidebar-collapsed:`, `theme-system:`, `theme-light:`
+and `theme-dark:` style a site's own elements by those states.
+
+## Reading classes
+
+Rendered Markdown has no element to put a utility on, so its styles are classes
+in `prose.css`. Each starts with `quire-`, so it can't collide with a site's
+own classes or another library's, such as Tailwind's `prose`.
 
 | Class | Put it on |
 | --- | --- |
 | `quire-prose` | The element holding rendered Markdown |
-| `quire-shell` | The page grid, with `has-sidebar` or `no-sidebar`, and `has-rail`, `no-rail` or `is-wide` |
-| `quire-sidebar`, `quire-scrim`, `quire-rail` | The section navigation, the backdrop behind it on a phone, and the contents rail |
 | `quire-doc-meta`, `quire-doc-status` | A document's facts line and its status |
 | `quire-page-origin` | A note naming the page's source |
 | `quire-source-view`, `quire-source-line` | A file shown verbatim, one element per line, linkable as `#L<n>` |
 | `quire-source-text` | Free text kept as written, in a `<pre>` |
 | `quire-accordion` | A `<details>` whose summary is a heading |
 | `quire-figure` | A diagram the browser draws |
-
-On the root element, `data-theme` pins the scheme, `data-sidebar-open` shows
-the sidebar on a phone and `data-sidebar-collapsed` hides it on a desktop.
 
 ## Theming
 
@@ -69,10 +111,10 @@ defined. Every colour is written once as `light-dark(light, dark)`:
   that scheme;
 - a page without it follows the reader's system setting.
 
-A self-contained export therefore needs no second dark palette. To re-theme a
-site, override the `--quire-*` properties; don't restyle the rules that use
-them. A stylesheet that can't run Tailwind, such as one embedded in an offline
-export, can import `@d0ssant0s/quire/tokens.css` alone.
+A page without a theme switch therefore needs no second dark palette. To
+re-theme a site, override the `--quire-*` properties; don't restyle the rules
+or utilities that use them. A component also takes a `class` for adjustments
+of its own.
 
 ## Develop
 
@@ -89,15 +131,17 @@ mise exec -- npm run check
 `check` builds the example and verifies that every colour token is defined
 once as `light-dark()`, that the theme reads only declared tokens, and that
 Tailwind generates the utilities the example uses and no others. It also
-refuses a styled class without the `quire-` prefix, packs the package and
-verifies that it ships `LICENSE` and `THIRD-PARTY-NOTICES.md`.
+refuses a reading class without the `quire-` prefix and a component colour
+that bypasses the tokens, packs the package and verifies that it ships `LICENSE` and `THIRD-PARTY-NOTICES.md`.
 It checks public files for private tracker references. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for the commit hook and optional external
 deny-list.
 
 `check:browser` opens the example in Chromium and checks both themes and the
-system scheme, highlighted code, the shell at desktop and phone widths, tables
-scrolling in their frame, a linked source line and reduced motion:
+system scheme, highlighted code, the shell at desktop and phone widths, the
+menu button on both, the theme switch and what it remembers, the current-page
+mark and the contents rail, tables scrolling in their frame, a linked source
+line and reduced motion:
 
 ```sh
 mise exec -- npx playwright install chromium   # once; or set CHROMIUM=/path/to/chromium

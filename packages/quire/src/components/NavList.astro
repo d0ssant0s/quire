@@ -1,0 +1,29 @@
+---
+// One level of the section navigation; Sidebar renders the first. A nested
+// level hangs from a guide line under its group.
+import type { NavItem } from '../types';
+
+interface Props { items: NavItem[]; current?: string; depth?: number }
+const { items, current, depth = 0 } = Astro.props;
+const holds = (item: NavItem): boolean => (item.items ? item.items.some(holds) : item.href === current);
+const row = 'flex gap-2 rounded-[7px] px-2 py-[5px] hover:bg-subtle hover:text-fg';
+---
+
+<ul class:list={['grid gap-px', depth > 0 && 'ml-4 border-l border-line pl-2']}>
+  {items.map((item) => (
+    <li>
+      {item.items ? (
+        <details class="group" open={holds(item) || !item.collapsed}>
+          <summary class:list={[row, "cursor-pointer list-none justify-between font-medium text-fg after:text-faint after:content-['▸'] group-open:after:content-['▾'] [&::-webkit-details-marker]:hidden"]}>{item.label}</summary>
+          <Astro.self items={item.items} current={current} depth={depth + 1} />
+        </details>
+      ) : (
+        <a
+          href={item.href}
+          aria-current={item.href === current ? 'page' : undefined}
+          class:list={[row, 'text-muted aria-[current=page]:bg-accent-soft aria-[current=page]:font-medium aria-[current=page]:text-accent']}
+        >{item.label}</a>
+      )}
+    </li>
+  ))}
+</ul>
