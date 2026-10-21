@@ -18,10 +18,28 @@ built.
 
 ## Use
 
+A site installs a released version straight from this repository. Each
+release is a tag, listed in [CHANGELOG.md](CHANGELOG.md); before 1.0, a minor
+version marks a breaking change, so a range such as `^0.1.0` takes fixes and
+additions but no breaking release:
+
+```json
+{
+  "dependencies": {
+    "@d0ssant0s/quire": "git+https://github.com/d0ssant0s/quire.git#semver:^0.1.0"
+  }
+}
+```
+
+The site's lockfile records the exact commit, and `npm update
+@d0ssant0s/quire` moves it to the newest release in the range. To work on
+quire and a site together, `npm link` the site to a local clone; link nothing a
+site releases.
+
 Registry publication is prohibited unless the maintainer explicitly lifts this
 restriction. The package sets `private: true` to make npm refuse publication.
-Do not add registry publishing workflows or credentials. Local workspaces and
-package tarballs remain available for development and distribution.
+Do not add registry publishing workflows or credentials; a tag in this
+repository is not a registry release.
 
 ```js
 // astro.config.mjs
@@ -118,8 +136,8 @@ of its own.
 
 ## Develop
 
-The repository is an npm workspace: `packages/quire` is the reusable package
-and `examples/basic` is a site that consumes it.
+The package is the repository root, and `examples/basic` is a workspace site
+that consumes it.
 
 ```sh
 mise install
@@ -132,7 +150,8 @@ mise exec -- npm run check
 once as `light-dark()`, that the theme reads only declared tokens, and that
 Tailwind generates the utilities the example uses and no others. It also
 refuses a reading class without the `quire-` prefix and a component colour
-that bypasses the tokens, packs the package and verifies that it ships `LICENSE` and `THIRD-PARTY-NOTICES.md`.
+that bypasses the tokens, packs the package and verifies that it ships `LICENSE`
+and `THIRD-PARTY-NOTICES.md` and none of the repository's tooling.
 It checks public files for private tracker references. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for the commit hook and optional external
 deny-list.
@@ -148,12 +167,26 @@ mise exec -- npx playwright install chromium   # once; or set CHROMIUM=/path/to/
 mise exec -- npm run check:browser
 ```
 
-CI runs both checks on every push to `main` and every pull request.
+CI runs both checks on every push to `main`, every pull request and every
+release tag, and refuses a tag that does not match the package version.
+
+## Release
+
+Add the changes under `## Unreleased` in CHANGELOG.md as they merge. To cut a
+release from a clean, current `main`:
+
+```sh
+mise exec -- npm run release -- 0.2.0
+git push origin main v0.2.0
+```
+
+The script runs the checks, sets the version, dates the changelog entries,
+commits and tags. Pushing is the separate step that makes the release
+available.
 
 ## License
 
 MIT, copyright d0ssant0s; see [LICENSE](LICENSE). The colour palette is
 adapted from [t3code](https://github.com/pingdotgg/t3code) (MIT, T3 Tools
 Inc.); [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) reproduces its notice.
-The package ships both files, and `packages/quire` holds the copies npm
-packs, which `check` keeps identical to the ones here.
+The package ships both files, which `check` verifies.
