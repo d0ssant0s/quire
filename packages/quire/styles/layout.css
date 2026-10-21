@@ -1,0 +1,41 @@
+/* The page shell: a section sidebar, the article and a contents rail.
+
+   <div class="quire-shell has-sidebar has-rail">
+     <nav class="quire-sidebar">…</nav>
+     <div class="quire-scrim"></div>
+     <main>…</main>
+     <aside class="quire-rail">…</aside>
+   </div>
+
+   The shell takes has-sidebar or no-sidebar, and has-rail, no-rail or is-wide;
+   is-wide gives the article the whole width, for tables and graphs. On wide
+   screens the sidebar collapses when the root carries data-sidebar-collapsed;
+   on narrow ones it slides over the page when the root carries
+   data-sidebar-open. The rail appears once there is room for it. */
+
+@layer components {
+  .quire-shell { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .quire-shell > main { width: 100%; max-width: 980px; justify-self: center; }
+  .quire-shell.is-wide > main { max-width: none; }
+  .quire-rail { display: none; }
+  .quire-sidebar { position: fixed; z-index: 25; left: 0; width: min(300px, 86vw); background: var(--quire-bg); transform: translateX(-100%); transition: transform 0.18s; }
+  [data-sidebar-open] .quire-sidebar { transform: none; box-shadow: 0 16px 40px rgb(0 0 0 / 0.2); }
+  .quire-scrim { display: none; }
+  [data-sidebar-open] .quire-scrim { display: block; position: fixed; inset: var(--quire-header) 0 0; z-index: 24; background: rgb(0 0 0 / 0.3); }
+  @media (prefers-reduced-motion: reduce) {
+    .quire-sidebar { transition: none; }
+  }
+  @media (min-width: 64rem) {
+    .quire-shell.has-sidebar { grid-template-columns: 264px minmax(0, 1fr); }
+    .quire-sidebar { position: sticky; z-index: auto; width: auto; transform: none; transition: none; }
+    [data-sidebar-open] .quire-sidebar { box-shadow: none; }
+    [data-sidebar-open] .quire-scrim { display: none; }
+    [data-sidebar-collapsed] .quire-shell.has-sidebar { grid-template-columns: minmax(0, 1fr); }
+    [data-sidebar-collapsed] .quire-sidebar { display: none; }
+  }
+  @media (min-width: 80rem) {
+    .quire-shell.has-sidebar.has-rail { grid-template-columns: 264px minmax(0, 1fr) 248px; }
+    .quire-shell.no-sidebar.has-rail, [data-sidebar-collapsed] .quire-shell.has-sidebar.has-rail { grid-template-columns: minmax(0, 1fr) 248px; }
+    .quire-rail { display: block; }
+  }
+}

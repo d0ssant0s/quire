@@ -13,7 +13,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./tokens.css": "./styles/tokens.css",
-    "./theme.css": "./styles/theme.css"
+    "./theme.css": "./styles/theme.css",
+    "./prose.css": "./styles/prose.css",
+    "./layout.css": "./styles/layout.css"
   },
   "files": [
     "src",

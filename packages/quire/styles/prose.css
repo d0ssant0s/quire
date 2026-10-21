@@ -1,0 +1,90 @@
+/* Reading styles for rendered Markdown and the HTML a site's staging writes into
+   it. Rendered Markdown carries no utility classes, so its elements are styled
+   by selector under .quire-prose. Plain CSS that reads only the tokens, so an
+   offline export can embed it without Tailwind. */
+
+@layer components {
+  .quire-prose { font-size: 15px; line-height: 1.7; overflow-wrap: break-word; }
+  .quire-prose > :where(p, ul, ol, dl, blockquote, h2, h3, h4, h5, h6, .quire-page-origin, details) { max-width: var(--quire-measure); }
+  .quire-prose :where(p, ul, ol, blockquote, table, pre, dl, figure, details) { margin: 0 0 14px; }
+  .quire-prose :where(h2, h3, h4, h5, h6) { font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; scroll-margin-top: calc(var(--quire-header) + 16px); }
+  .quire-prose h2 { margin: 40px 0 10px; font-size: 19px; letter-spacing: -0.015em; }
+  .quire-prose h3 { margin: 28px 0 8px; font-size: 16px; }
+  .quire-prose :where(h4, h5, h6) { margin: 20px 0 6px; font-size: 14.5px; }
+  .quire-prose > :first-child { margin-top: 0; }
+  .quire-prose a { color: var(--quire-accent); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--quire-accent) 35%, transparent); text-underline-offset: 3px; }
+  .quire-prose a:hover { text-decoration-color: var(--quire-accent); }
+  .quire-prose :where(ul, ol) { padding-left: 1.4em; }
+  .quire-prose ul { list-style: disc; }
+  .quire-prose ol { list-style: decimal; }
+  .quire-prose li { margin: 4px 0; }
+  .quire-prose li::marker { color: var(--quire-faint); }
+  .quire-prose strong { font-weight: 600; }
+  .quire-prose hr { border: 0; border-top: 1px solid var(--quire-border); margin: 28px 0; }
+  .quire-prose blockquote { padding: 2px 0 2px 14px; border-left: 2px solid var(--quire-border-strong); color: var(--quire-muted); }
+  .quire-prose :not(pre) > code { font-family: var(--quire-font-mono); font-size: 0.86em; padding: 0.08em 0.35em; border: 1px solid var(--quire-border); border-radius: 5px; background: var(--quire-subtle); }
+  .quire-prose a code { color: inherit; }
+  .quire-prose pre { font-family: var(--quire-font-mono); font-size: 12.5px; line-height: 1.6; padding: 12px 14px; border: 1px solid var(--quire-border); border-radius: var(--quire-radius); overflow-x: auto; background: var(--quire-subtle) !important; }
+  .quire-prose pre code { font-family: inherit; }
+  .quire-prose img, .quire-prose svg { max-width: 100%; height: auto; }
+  /* Diagrams are drawn for a white page, so they keep one in both themes. */
+  .quire-prose figure img, .quire-prose p > img { display: block; margin: 8px auto; border: 1px solid var(--quire-border); border-radius: var(--quire-radius); background: #fff; padding: 12px; }
+
+  /* A wide table scrolls inside its own frame instead of widening the page. */
+  .quire-prose table { display: block; width: max-content; max-width: 100%; overflow-x: auto; border-collapse: separate; border-spacing: 0; border: 1px solid var(--quire-border); border-radius: var(--quire-radius); background: var(--quire-surface); font-size: 13px; line-height: 1.5; }
+  .quire-prose th { text-align: left; font-weight: 500; font-size: 12px; color: var(--quire-faint); padding: 8px 12px; border-bottom: 1px solid var(--quire-border); background: var(--quire-surface); }
+  .quire-prose td { padding: 8px 12px; border-top: 1px solid var(--quire-border); vertical-align: top; }
+  .quire-prose tr:first-child td { border-top: 0; }
+  .quire-prose details { border: 1px solid var(--quire-border); border-radius: var(--quire-radius); padding: 8px 12px; }
+  .quire-prose summary { cursor: pointer; font-weight: 500; }
+
+  /* Astro's Shiki output carries both themes; the dark one is chosen here, as
+     the page's scheme decides, so highlighting follows the theme switch. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .quire-prose pre.astro-code,
+    :root:not([data-theme]) .quire-prose pre.astro-code span { color: var(--shiki-dark) !important; }
+  }
+  :root[data-theme='dark'] .quire-prose pre.astro-code,
+  :root[data-theme='dark'] .quire-prose pre.astro-code span { color: var(--shiki-dark) !important; }
+
+  /* An accordion: a heading is the summary, and its marker turns when open.
+     Nested accordions indent one level. */
+  .quire-prose details.quire-accordion { border: 0; border-radius: 0; padding: 0; margin: 0; }
+  .quire-prose details.quire-accordion > summary { list-style: none; display: flex; align-items: baseline; gap: 8px; padding: 4px 0; }
+  .quire-prose details.quire-accordion > summary::-webkit-details-marker { display: none; }
+  .quire-prose details.quire-accordion > summary::before { content: '▸'; flex: none; color: var(--quire-faint); font-size: 0.85em; transition: transform 0.15s; }
+  .quire-prose details.quire-accordion[open] > summary::before { transform: rotate(90deg); }
+  .quire-prose details.quire-accordion > summary:focus-visible { outline: 2px solid var(--quire-accent); outline-offset: 3px; border-radius: 4px; }
+  .quire-prose details.quire-accordion > summary > :where(h2, h3) { margin: 0; }
+  .quire-prose details.quire-accordion > details.quire-accordion { margin-left: 18px; }
+  .quire-prose details.quire-accordion > details.quire-accordion > summary { padding: 2px 0; }
+  .quire-prose details.quire-accordion > details.quire-accordion > summary > h3 { font-size: 15px; font-weight: 500; }
+  .quire-prose details.quire-accordion[open] > summary { margin-bottom: 6px; }
+
+  /* A figure the browser draws, such as a Mermaid diagram, framed like a table. */
+  .quire-prose .quire-figure { margin: 0 0 14px; padding: 16px; border: 1px solid var(--quire-border); border-radius: var(--quire-radius); background: var(--quire-surface); overflow-x: auto; text-align: center; }
+  .quire-prose .quire-figure svg { max-width: 100%; height: auto; }
+
+  /* The document's facts line: status, sections and place. Each separator sits
+     in the gap before its fact, so a fact that wraps takes its separator
+     outside the clipped box rather than leading the line. */
+  .quire-doc-meta { display: flex; flex-wrap: wrap; gap: 4px 1.2em; overflow: hidden; margin: 0 0 20px; color: var(--quire-muted); font-size: 13px; }
+  .quire-doc-meta > span { position: relative; }
+  .quire-doc-meta > span + span::before { content: '·' / ''; position: absolute; inset-inline-start: -0.75em; }
+  .quire-doc-meta .quire-doc-status { color: var(--quire-fg); font-weight: 600; }
+  .quire-doc-meta a { color: inherit; text-underline-offset: 0.2em; }
+  .quire-doc-meta a:hover { color: var(--quire-fg); }
+
+  /* Where the page came from: a note after the article naming its source. */
+  .quire-prose .quire-page-origin { padding: 10px 14px; border: 1px solid var(--quire-border); border-radius: var(--quire-radius); background: var(--quire-subtle); font-size: 14px; }
+  .quire-prose > .quire-page-origin:last-child { margin-top: 40px; }
+  .quire-page-origin code, .quire-source-link code { background: none !important; border: 0 !important; padding: 0 !important; }
+
+  /* Source text shown verbatim: whole files with linkable line numbers, and
+     free text kept as written. */
+  .quire-prose .quire-source-view { font-family: var(--quire-font-mono); font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; counter-reset: line; padding: 8px 0; border: 1px solid var(--quire-border); border-radius: var(--quire-radius); background: var(--quire-surface); }
+  .quire-source-line { display: block; position: relative; padding-inline: 4rem 1rem; scroll-margin-top: calc(var(--quire-header) + 16px); }
+  .quire-source-line::before { counter-increment: line; content: counter(line); position: absolute; inset-inline-start: 0; width: 3rem; text-align: end; color: var(--quire-faint); user-select: none; }
+  .quire-source-line:target { background: var(--quire-accent-soft); }
+  .quire-prose pre.quire-source-text { white-space: pre-wrap; font-family: var(--quire-font-sans); font-size: 14px; line-height: 1.65; background: var(--quire-surface) !important; max-width: var(--quire-measure); }
+}

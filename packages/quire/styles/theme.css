@@ -1,13 +1,17 @@
-/* Tailwind's view of the quire tokens. A site's stylesheet imports Tailwind and
-   then this file:
+/* Everything quire styles, for a site built with Tailwind: the tokens, the
+   reading and page-shell styles, and Tailwind's view of the tokens. A site's
+   stylesheet imports Tailwind and then this file:
 
      @import 'tailwindcss';
      @import '@d0ssant0s/quire/theme.css';
 
    Utilities such as bg-surface, text-muted and border-line then follow the
-   tokens and the reader's theme. */
+   tokens and the reader's theme. Without Tailwind, import tokens.css,
+   prose.css and layout.css directly. */
 
 @import './tokens.css';
+@import './prose.css';
+@import './layout.css';
 
 /* Tailwind skips node_modules when it looks for class names, so the shell's own
    components are named here, relative to this file. */

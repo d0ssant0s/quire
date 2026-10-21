@@ -10,9 +10,10 @@ quire is an independent project, not affiliated with or endorsed by Astro.
 
 ## Status
 
-Early. The package holds the design tokens, the Tailwind theme that reads them
-and an integration that wires Tailwind into the build. Layouts, navigation,
-search and the reading components follow.
+Early. The package holds the design tokens, the reading styles for rendered
+Markdown, the page-shell grid, the Tailwind theme over them, and an integration
+that wires Tailwind and dual-theme code highlighting into the build. Layouts,
+navigation, search and the reading components follow.
 
 ## Use
 
@@ -33,6 +34,26 @@ export default defineConfig({ integrations: [quire()] });
 Utilities such as `bg-surface`, `text-muted`, `border-line` and the status
 tones `ok`, `warn`, `danger`, `info` and `neutral`, each with a `-soft`
 background, then follow the tokens.
+
+## Classes
+
+Every class quire styles starts with `quire-`, so it can't collide with a
+site's own classes or another library's, such as Tailwind's `prose`.
+
+| Class | Put it on |
+| --- | --- |
+| `quire-prose` | The element holding rendered Markdown |
+| `quire-shell` | The page grid, with `has-sidebar` or `no-sidebar`, and `has-rail`, `no-rail` or `is-wide` |
+| `quire-sidebar`, `quire-scrim`, `quire-rail` | The section navigation, the backdrop behind it on a phone, and the contents rail |
+| `quire-doc-meta`, `quire-doc-status` | A document's facts line and its status |
+| `quire-page-origin` | A note naming the page's source |
+| `quire-source-view`, `quire-source-line` | A file shown verbatim, one element per line, linkable as `#L<n>` |
+| `quire-source-text` | Free text kept as written, in a `<pre>` |
+| `quire-accordion` | A `<details>` whose summary is a heading |
+| `quire-figure` | A diagram the browser draws |
+
+On the root element, `data-theme` pins the scheme, `data-sidebar-open` shows
+the sidebar on a phone and `data-sidebar-collapsed` hides it on a desktop.
 
 ## Theming
 
@@ -61,8 +82,18 @@ mise exec -- npm run check
 
 `check` builds the example and verifies that every colour token is defined
 once as `light-dark()`, that the theme reads only declared tokens, and that
-Tailwind generates the utilities the example uses and no others. It also packs
-the package and verifies that it ships `LICENSE` and `THIRD-PARTY-NOTICES.md`.
+Tailwind generates the utilities the example uses and no others. It also
+refuses a styled class without the `quire-` prefix, packs the package and
+verifies that it ships `LICENSE` and `THIRD-PARTY-NOTICES.md`.
+
+`check:browser` opens the example in Chromium and checks both themes and the
+system scheme, highlighted code, the shell at desktop and phone widths, tables
+scrolling in their frame, a linked source line and reduced motion:
+
+```sh
+mise exec -- npx playwright install chromium   # once; or set CHROMIUM=/path/to/chromium
+mise exec -- npm run check:browser
+```
 
 ## License
 
