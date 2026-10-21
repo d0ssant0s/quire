@@ -17,6 +17,11 @@ navigation, search and the reading components follow.
 
 ## Use
 
+Registry publication is prohibited unless the maintainer explicitly lifts this
+restriction. The package sets `private: true` to make npm refuse publication.
+Do not add registry publishing workflows or credentials. Local workspaces and
+package tarballs remain available for development and distribution.
+
 ```js
 // astro.config.mjs
 import { defineConfig } from 'astro/config';
@@ -71,7 +76,7 @@ export, can import `@d0ssant0s/quire/tokens.css` alone.
 
 ## Develop
 
-The repository is an npm workspace: `packages/quire` is the published package
+The repository is an npm workspace: `packages/quire` is the reusable package
 and `examples/basic` is a site that consumes it.
 
 ```sh
@@ -101,4 +106,4 @@ MIT, copyright d0ssant0s; see [LICENSE](LICENSE). The colour palette is
 adapted from [t3code](https://github.com/pingdotgg/t3code) (MIT, T3 Tools
 Inc.); [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) reproduces its notice.
 The package ships both files, and `packages/quire` holds the copies npm
-publishes, which `check` keeps identical to the ones here.
+packs, which `check` keeps identical to the ones here.
