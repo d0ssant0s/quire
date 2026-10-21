@@ -7,7 +7,8 @@ Plan, write an ADR, track an issue, or ask for independent review only when the 
 - Run the example: `mise exec -- npm --workspace examples/basic run dev`.
 - Check build, styles, and package licensing: `mise exec -- npm run check`.
 - Check browser behavior: `mise exec -- npm run check:browser`; set `CHROMIUM=/usr/bin/chromium` to use the installed system browser if Playwright's browser is absent.
-- `packages/quire/` owns the published Astro integration and CSS tokens, theme, prose, and layout styles.
+- `packages/quire/` owns the reusable Astro integration and CSS tokens, theme, prose, and layout styles.
+- Registry publication is prohibited. Keep the package private and follow the restriction in `README.md`.
 - `examples/basic/` owns the consuming Astro site and demonstration pages.
 - `scripts/` owns style, package-license, and browser checks.
 - `README.md` describes current behavior and identifies planned features; no domain glossary, design notes, or ADR directory exists yet.
