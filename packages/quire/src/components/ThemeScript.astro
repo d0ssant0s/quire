@@ -1,0 +1,19 @@
+---
+// Restores the reader's theme and sidebar choice before first paint, so neither
+// flashes. Place it in the page's <head>; `storage` must match the Header's.
+interface Props {
+  /** Prefix of the localStorage keys, `<storage>-theme` and `<storage>-sidebar`. */
+  storage?: string;
+}
+const { storage = 'quire' } = Astro.props;
+---
+
+<script is:inline define:vars={{ storage }}>
+  try {
+    const theme = localStorage.getItem(`${storage}-theme`);
+    if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+    if (localStorage.getItem(`${storage}-sidebar`) === 'collapsed') document.documentElement.setAttribute('data-sidebar-collapsed', '');
+  } catch {
+    // Storage can be unavailable, as for a file opened from disk in some browsers.
+  }
+</script>

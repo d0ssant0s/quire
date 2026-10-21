@@ -16,7 +16,7 @@
     "./tokens.css": "./styles/tokens.css",
     "./theme.css": "./styles/theme.css",
     "./prose.css": "./styles/prose.css",
-    "./layout.css": "./styles/layout.css"
+    "./components/*": "./src/components/*"
   },
   "files": [
     "src",

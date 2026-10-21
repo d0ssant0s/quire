@@ -1,17 +1,16 @@
-/* Everything quire styles, for a site built with Tailwind: the tokens, the
-   reading and page-shell styles, and Tailwind's view of the tokens. A site's
-   stylesheet imports Tailwind and then this file:
+/* Everything quire styles: the tokens, the reading styles for rendered
+   Markdown, and Tailwind's view of the tokens, which quire's components and the
+   site's pages both use. A site's stylesheet imports Tailwind and then this
+   file:
 
      @import 'tailwindcss';
      @import '@d0ssant0s/quire/theme.css';
 
    Utilities such as bg-surface, text-muted and border-line then follow the
-   tokens and the reader's theme. Without Tailwind, import tokens.css,
-   prose.css and layout.css directly. */
+   tokens and the reader's theme. */
 
 @import './tokens.css';
 @import './prose.css';
-@import './layout.css';
 
 /* Tailwind skips node_modules when it looks for class names, so the shell's own
    components are named here, relative to this file. */
@@ -30,11 +29,24 @@
   }
 }
 
+/* The reader's choice itself, for a control that shows it: the system scheme,
+   or a pinned light or dark theme. */
+@custom-variant theme-system (&:where(:root:not([data-theme]) *));
+@custom-variant theme-light (&:where([data-theme='light'] *));
+@custom-variant theme-dark (&:where([data-theme='dark'] *));
+
+/* The shell's states, set on the root by the header's menu button: the sidebar
+   slid over the page on a phone, or collapsed on a desktop. */
+@custom-variant sidebar-open (&:where([data-sidebar-open] *));
+@custom-variant sidebar-collapsed (&:where([data-sidebar-collapsed] *));
+
 /* inline: utilities refer to the tokens themselves, so a site that overrides a
    token on any element re-themes everything beneath it. */
 @theme inline {
   --font-sans: var(--quire-font-sans);
   --font-mono: var(--quire-font-mono);
+  --text-xs: var(--quire-text-xs);
+  --text-sm: var(--quire-text-sm);
   --color-bg: var(--quire-bg);
   --color-surface: var(--quire-surface);
   --color-subtle: var(--quire-subtle);

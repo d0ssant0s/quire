@@ -1,0 +1,21 @@
+---
+// The section navigation, from a plain tree of links and groups. The link to
+// the current page is marked, and every group that holds it starts open.
+import type { NavItem } from '../types';
+import Eyebrow from './Eyebrow.astro';
+import NavList from './NavList.astro';
+
+interface Props {
+  items: NavItem[];
+  /** The current page's href, as the items write it. */
+  current?: string;
+  /** The navigation's name, shown above it and read by screen readers. */
+  label?: string;
+}
+const { items, current, label = 'Sections' } = Astro.props;
+---
+
+<nav data-quire-nav class="min-h-full border-r border-line px-3 pt-5 pb-8 text-sm" aria-label={label}>
+  <div class="px-2"><Eyebrow>{label}</Eyebrow></div>
+  <NavList items={items} current={current} />
+</nav>

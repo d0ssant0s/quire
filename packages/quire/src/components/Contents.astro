@@ -1,0 +1,55 @@
+---
+// The page's own contents, from the headings Astro reads out of Markdown. The
+// heading being read is marked as the reader scrolls.
+import type { MarkdownHeading } from 'astro';
+import Eyebrow from './Eyebrow.astro';
+
+interface Props {
+  headings: MarkdownHeading[];
+  /** The shallowest and deepest heading levels listed. */
+  minDepth?: number;
+  maxDepth?: number;
+  label?: string;
+}
+const { headings, minDepth = 2, maxDepth = 3, label = 'On this page' } = Astro.props;
+const listed = headings.filter((heading) => heading.depth >= minDepth && heading.depth <= maxDepth);
+---
+
+{listed.length > 0 && (
+  <nav data-quire-contents class="py-8 pr-5 pl-2 text-sm" aria-label={label}>
+    <Eyebrow>{label}</Eyebrow>
+    <ul>
+      {listed.map((heading) => (
+        <li>
+          <a
+            href={`#${heading.slug}`}
+            data-level={heading.depth - minDepth}
+            class="block border-l border-line py-[3px] pl-3 text-muted hover:text-fg data-[level=1]:pl-6 data-[level=2]:pl-9 aria-[current=true]:border-fg aria-[current=true]:font-medium aria-[current=true]:text-fg"
+          >{heading.text}</a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+)}
+
+<script>
+  const contents = document.querySelector<HTMLElement>('[data-quire-contents]');
+  if (contents) {
+    const links = [...contents.querySelectorAll<HTMLAnchorElement>('a')];
+    const targets = links.map((link) => document.getElementById(decodeURIComponent(link.hash.slice(1))));
+    const mark = () => {
+      // A heading counts as read once it passes the top quarter of the window,
+      // or the scroll margin a link lands it at, whichever is lower.
+      const first = targets.find(Boolean);
+      const margin = first ? parseFloat(getComputedStyle(first).scrollMarginTop) || 0 : 0;
+      const offset = Math.max(margin, innerHeight * 0.25);
+      let active = 0;
+      targets.forEach((target, index) => {
+        if (target && target.getBoundingClientRect().top - offset <= 0) active = index;
+      });
+      links.forEach((link, index) => link.setAttribute('aria-current', String(index === active)));
+    };
+    addEventListener('scroll', mark, { passive: true });
+    mark();
+  }
+</script>

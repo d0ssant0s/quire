@@ -1,0 +1,48 @@
+---
+// The page shell: the section sidebar, the article and the contents rail. The
+// sidebar and rail columns exist only when their slots are filled; `wide` gives
+// the article the whole width and drops the rail, for tables and graphs. On a
+// desktop the sidebar is a column the menu button collapses; on a phone it
+// slides over the page. The rail appears once there is room for it.
+import type { HTMLAttributes } from 'astro/types';
+
+interface Props {
+  wide?: boolean;
+  /** Classes for the shell, such as a maximum width. */
+  class?: string;
+  /** Attributes for the <main> element, such as a search indexer's markers. */
+  main?: HTMLAttributes<'main'>;
+}
+const { wide = false, class: className, main = {} } = Astro.props;
+const sidebar = Astro.slots.has('sidebar');
+const rail = !wide && Astro.slots.has('rail');
+const columns = sidebar
+  ? rail
+    ? 'lg:grid-cols-[264px_minmax(0,1fr)] xl:grid-cols-[264px_minmax(0,1fr)_248px] lg:sidebar-collapsed:grid-cols-[minmax(0,1fr)] xl:sidebar-collapsed:grid-cols-[minmax(0,1fr)_248px]'
+    : 'lg:grid-cols-[264px_minmax(0,1fr)] lg:sidebar-collapsed:grid-cols-[minmax(0,1fr)]'
+  : rail
+    ? 'xl:grid-cols-[minmax(0,1fr)_248px]'
+    : '';
+const side = 'top-(--quire-header) h-[calc(100vh-var(--quire-header))] overflow-y-auto';
+---
+
+<div data-quire-shell class:list={['grid grid-cols-[minmax(0,1fr)]', columns, className]}>
+  {sidebar && (
+    <div
+      id="quire-sidebar"
+      data-quire-sidebar
+      class:list={[
+        side,
+        'fixed left-0 z-25 w-[min(300px,86vw)] -translate-x-full bg-bg transition-transform duration-180 motion-reduce:duration-0 sidebar-open:translate-x-0 sidebar-open:shadow-xl',
+        'lg:sticky lg:z-auto lg:w-auto lg:translate-x-0 lg:transition-none lg:sidebar-open:shadow-none lg:sidebar-collapsed:hidden',
+      ]}
+    ><slot name="sidebar" /></div>
+  )}
+  {sidebar && <div data-quire-scrim class="fixed inset-x-0 top-(--quire-header) bottom-0 z-24 hidden bg-black/30 sidebar-open:block lg:sidebar-open:hidden"></div>}
+  <main
+    {...main}
+    data-quire-main
+    class:list={['w-full min-w-0 justify-self-center px-5 pt-7 pb-24 md:px-12', wide ? 'max-w-none' : 'max-w-[980px]', main.class]}
+  ><slot /></main>
+  {rail && <div data-quire-rail class:list={[side, 'sticky hidden xl:block']}><slot name="rail" /></div>}
+</div>
