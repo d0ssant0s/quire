@@ -104,6 +104,8 @@ mise exec -- npx playwright install chromium   # once; or set CHROMIUM=/path/to/
 mise exec -- npm run check:browser
 ```
 
+CI runs both checks on every push to `main` and every pull request.
+
 ## License
 
 MIT, copyright d0ssant0s; see [LICENSE](LICENSE). The colour palette is
