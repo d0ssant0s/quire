@@ -82,6 +82,7 @@ and `examples/basic` is a site that consumes it.
 ```sh
 mise install
 mise exec -- npm install
+mise exec -- npm run setup:hooks
 mise exec -- npm run check
 ```
 
@@ -90,6 +91,9 @@ once as `light-dark()`, that the theme reads only declared tokens, and that
 Tailwind generates the utilities the example uses and no others. It also
 refuses a styled class without the `quire-` prefix, packs the package and
 verifies that it ships `LICENSE` and `THIRD-PARTY-NOTICES.md`.
+It checks public files for private tracker references. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the commit hook and optional external
+deny-list.
 
 `check:browser` opens the example in Chromium and checks both themes and the
 system scheme, highlighted code, the shell at desktop and phone widths, tables

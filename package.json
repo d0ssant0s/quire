@@ -9,7 +9,9 @@
   ],
   "scripts": {
     "build": "npm --workspace examples/basic run build",
-    "check": "npm run build && node scripts/check-styles.mjs && node scripts/check-license.mjs",
+    "check": "npm run check:references && npm run build && node scripts/check-styles.mjs && node scripts/check-license.mjs",
+    "check:references": "node --test scripts/check-references.test.mjs && node scripts/check-references.mjs",
+    "setup:hooks": "node scripts/setup-hooks.mjs",
     "check:browser": "npm run build && node scripts/check-browser.mjs"
   },
   "devDependencies": {
