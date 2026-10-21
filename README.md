@@ -182,7 +182,8 @@ git push origin main v0.2.0
 
 The script runs the checks, sets the version, dates the changelog entries,
 commits and tags. Pushing is the separate step that makes the release
-available.
+available. Once the tag passes its checks in CI, CI creates the GitHub release
+page, with the version's changelog section as its notes.
 
 ## License
 
