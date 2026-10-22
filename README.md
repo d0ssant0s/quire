@@ -112,11 +112,19 @@ and `theme-dark:` style a site's own elements by those states.
 ## Interactive components
 
 Interactive components are Vue single-file components under `src/vue/`, built
-on [Reka UI](https://reka-ui.com) and styled from the tokens. Vue and Reka are
-optional peer dependencies: a site that uses none of these components installs
-neither, and quire's integration doesn't add Vue. A site that uses one installs
-`vue`, `reka-ui` and `@astrojs/vue`, adds `vue()` to its integrations and
-hydrates the component with a `client:` directive:
+on [Reka UI](https://reka-ui.com) and styled from the tokens. quire ships them
+as source, which the site's build compiles, so every island on a page shares
+one Vue runtime and the site's Tailwind sees their classes. quire installs
+`vue`, `reka-ui` and `@astrojs/vue` at the versions its release is tested with;
+a site doesn't pin them itself. A site that uses a component turns on Vue with
+the integration's option:
+
+```js
+// astro.config.mjs
+export default defineConfig({ integrations: [quire({ vue: true })] });
+```
+
+and hydrates the component with a `client:` directive:
 
 ```astro
 ---
@@ -128,8 +136,11 @@ import Search from '@d0ssant0s/quire/vue/Search.vue';
 </Header>
 ```
 
-A component that reads live data takes an endpoint URL, never a function, and
-shows waiting, empty and failed states.
+Without the option, a site has no Vue in its build and its pages ship none.
+
+A component that reads live data takes an endpoint URL and shows waiting,
+empty and failed states. An Astro page can pass a hydrated component only
+serialisable props, so a function never crosses that boundary.
 
 | Component | What it does |
 | --- | --- |
