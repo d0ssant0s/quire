@@ -5,6 +5,8 @@ the README. Before 1.0, a minor version marks a breaking change.
 
 ## Unreleased
 
+## 0.2.1 (2026-10-22)
+
 - Navigation items and the `Sidebar` label take a site-supplied SVG icon. A
   group's marker is a chevron that turns when it opens, groups the reader opens
   or closes stay so for the browser session, and the current page is scrolled
