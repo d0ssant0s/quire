@@ -5,6 +5,9 @@ the README. Before 1.0, a minor version marks a breaking change.
 
 ## Unreleased
 
+- Interactive components as Vue components on Reka UI, with `vue` and
+  `reka-ui` as optional peer dependencies. The first is `Search`, which queries
+  a live endpoint; `SearchResult` describes its answers.
 - Each release tag that passes the checks gets a GitHub release page whose
   notes are its section of this changelog.
 
