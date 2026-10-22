@@ -8,6 +8,14 @@ since the previous release, grouped as Breaking changes, Features, Changed,
 Fixed and Security; `npm run changelog` shows the next one. The release page
 on GitHub carries the same section.
 
+## 0.2.2 (2026-10-22)
+
+### Features
+
+- **vue:** install Vue with quire and turn it on with quire({ vue: true }) (#29)
+
+[All commits](https://github.com/d0ssant0s/quire/compare/v0.2.1...v0.2.2)
+
 ## 0.2.1 (2026-10-22)
 
 ### Features

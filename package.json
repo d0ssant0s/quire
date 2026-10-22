@@ -1,6 +1,6 @@
 {
   "name": "@d0ssant0s/quire",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "The look and feel and the components for technical-documentation sites built with Astro and Tailwind",
   "license": "MIT",
