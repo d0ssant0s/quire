@@ -6,6 +6,7 @@ import Header from '@d0ssant0s/quire/components/Header.astro';
 import Page from '@d0ssant0s/quire/components/Page.astro';
 import Sidebar from '@d0ssant0s/quire/components/Sidebar.astro';
 import ThemeScript from '@d0ssant0s/quire/components/ThemeScript.astro';
+import Search from '@d0ssant0s/quire/vue/Search.vue';
 import '../styles/site.css';
 
 interface Props { frontmatter: { title: string }; headings: MarkdownHeading[] }
@@ -25,6 +26,7 @@ const sections: NavItem[] = [
   <body class="min-h-screen bg-bg text-fg">
     <Header menu>
       <a href="/" class="font-semibold">quire example</a>
+      <Search slot="end" client:idle endpoint="/api/search" />
     </Header>
     <Page class="mx-auto max-w-[1480px]">
       <Sidebar slot="sidebar" items={sections} current={Astro.url.pathname} />

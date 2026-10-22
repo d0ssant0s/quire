@@ -20,8 +20,9 @@ for (const file of required) {
 for (const file of files) {
   if (/^(examples|scripts|docs|node_modules)\//.test(file)) problems.push(`the package includes ${file}`);
 }
-if (!readFileSync(join(root, 'THIRD-PARTY-NOTICES.md'), 'utf8').includes('T3 Tools Inc.')) {
-  problems.push('THIRD-PARTY-NOTICES.md lacks the t3code copyright notice');
+const notices = readFileSync(join(root, 'THIRD-PARTY-NOTICES.md'), 'utf8');
+for (const [project, holder] of [['t3code', 'T3 Tools Inc.'], ['shadcn-vue', 'unovue']]) {
+  if (!notices.includes(holder)) problems.push(`THIRD-PARTY-NOTICES.md lacks the ${project} copyright notice`);
 }
 
 if (problems.length) {

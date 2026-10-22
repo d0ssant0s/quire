@@ -13,8 +13,7 @@ quire is an independent project, not affiliated with or endorsed by Astro.
 Early. The package holds the design tokens, the reading styles for rendered
 Markdown, the Tailwind theme over them, the page shell as Astro components, and
 an integration that wires Tailwind and dual-theme code highlighting into the
-build. Interactive components such as search follow; #3 decides how they are
-built.
+build, and the first interactive component, a live search.
 
 ## Use
 
@@ -103,6 +102,35 @@ On the root element, `data-theme` pins the scheme, `data-sidebar-open` shows
 the sidebar on a phone and `data-sidebar-collapsed` hides it on a desktop. The
 variants `sidebar-open:`, `sidebar-collapsed:`, `theme-system:`, `theme-light:`
 and `theme-dark:` style a site's own elements by those states.
+
+## Interactive components
+
+Interactive components are Vue single-file components under `src/vue/`, built
+on [Reka UI](https://reka-ui.com) and styled from the tokens. Vue and Reka are
+optional peer dependencies: a site that uses none of these components installs
+neither, and quire's integration doesn't add Vue. A site that uses one installs
+`vue`, `reka-ui` and `@astrojs/vue`, adds `vue()` to its integrations and
+hydrates the component with a `client:` directive:
+
+```astro
+---
+import Search from '@d0ssant0s/quire/vue/Search.vue';
+---
+<Header menu>
+  <a href="/">Site</a>
+  <Search slot="end" client:idle endpoint="/api/search" />
+</Header>
+```
+
+A component that reads live data takes an endpoint URL, never a function, and
+shows waiting, empty and failed states.
+
+| Component | What it does |
+| --- | --- |
+| `Search` | A search dialog opened from the header or with Ctrl+K or ⌘K. It asks `<endpoint>?q=<query>`, which answers `{ "results": SearchResult[] }`, and a newer query cancels the request before it |
+
+`SearchResult` is exported from the package: `title` and `url`, with an
+optional `section` and a plain-text `excerpt`.
 
 ## Reading classes
 

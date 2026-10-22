@@ -24,4 +24,4 @@ export default function quire(): AstroIntegration {
   };
 }
 
-export type { NavItem } from './types';
+export type { NavItem, SearchResult } from './types';
