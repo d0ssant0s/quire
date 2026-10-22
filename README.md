@@ -206,16 +206,22 @@ release tag, and refuses a tag that does not match the package version.
 
 ## Release
 
-Add the changes under `## Unreleased` in CHANGELOG.md as they merge. To cut a
-release from a clean, current `main`:
+The changelog is written from commit subjects, which follow
+[Conventional Commits](https://www.conventionalcommits.org/):
+`type(scope)!: summary`. CONTRIBUTING.md lists the types and the group each
+lands in. `mise exec -- npm run changelog` shows the section the next release
+would get. To cut a release from a clean, current `main`:
 
 ```sh
-mise exec -- npm run release -- 0.2.0
-git push origin main v0.2.0
+mise exec -- npm run release -- 0.3.0
+git push origin main v0.3.0
 ```
 
-The script runs the checks, sets the version, dates the changelog entries,
-commits and tags. Pushing is the separate step that makes the release
+The script refuses a commit since the previous release that isn't a
+conventional commit, a release with nothing for the changelog, and a version
+that doesn't mark a breaking change (a minor version before 1.0, a major one
+after). It runs the checks, sets the version, writes the version's changelog
+section, commits and tags. Pushing is the separate step that makes the release
 available. Once the tag passes its checks in CI, CI creates the GitHub release
 page, with the version's changelog section as its notes.
 

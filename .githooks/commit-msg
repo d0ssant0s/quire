@@ -1,2 +1,3 @@
 #!/bin/sh
-exec node scripts/check-references.mjs --message "$1"
+node scripts/check-references.mjs --message "$1" || exit 1
+exec node scripts/check-commit.mjs --message "$1"

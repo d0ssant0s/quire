@@ -5,12 +5,32 @@ on:
     branches: [main]
     tags: ['v*']
   pull_request:
+    # edited: a changed title is checked again as a commit subject.
+    types: [opened, synchronize, reopened, edited]
 
 permissions:
   contents: read
 
 jobs:
+  # The changelog is built from commit subjects, and a squash merge takes the
+  # pull request's title as its subject, so both must be conventional commits.
+  commits:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+      - run: mise exec -- node scripts/check-commit.mjs --subject "$TITLE" --range "$BASE_SHA..$HEAD_SHA"
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
   check:
+    # A title edit changes no file.
+    if: github.event.action != 'edited'
     runs-on: ubuntu-24.04
     steps:
       # Actions are pinned by commit; the comment names the release.

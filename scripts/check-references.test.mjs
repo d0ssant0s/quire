@@ -64,7 +64,7 @@ test('uses an external deny-list for files and messages without disclosing match
   assert.equal(check(root, [], { QUIRE_REFERENCE_DENY_LIST: join(outside, 'missing') }).status, 1);
 });
 
-test('installed commit hook rejects a private message and preserves existing hook configuration', (t) => {
+test('installed commit hook rejects a private or unconventional message and preserves existing hook configuration', (t) => {
   const root = repository(t);
   const setup = resolve('scripts/setup-hooks.mjs');
   const runSetup = () => spawnSync(process.execPath, [setup], { cwd: root, encoding: 'utf8' });
@@ -88,7 +88,10 @@ test('installed commit hook rejects a private message and preserves existing hoo
     '-c', 'user.name=Test', '-c', 'user.email=test@example.org',
     'commit', '-m', message,
   ], { cwd: root, encoding: 'utf8', env: { ...process.env, QUIRE_REFERENCE_DENY_LIST: '' } });
-  assert.equal(commit(`Fix ${trackerId}`).status, 1);
-  const accepted = commit('Fix #12');
+  assert.equal(commit(`fix: close ${trackerId}`).status, 1);
+  const prose = commit('Fix #12');
+  assert.equal(prose.status, 1);
+  assert.match(prose.stderr, /type\(scope\): summary/);
+  const accepted = commit('fix: close #12');
   assert.equal(accepted.status, 0, accepted.stderr);
 });
