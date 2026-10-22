@@ -1,0 +1,8 @@
+---
+// A site-supplied icon before a navigation label: the markup of one <svg>,
+// sized to the text and drawn in its colour.
+interface Props { svg: string; class?: string }
+const { svg, class: className } = Astro.props;
+---
+
+<span aria-hidden="true" class:list={['flex size-[15px] shrink-0 [&>svg]:size-full', className]} set:html={svg} />

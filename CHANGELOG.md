@@ -5,6 +5,17 @@ the README. Before 1.0, a minor version marks a breaking change.
 
 ## Unreleased
 
+- Navigation items and the `Sidebar` label take a site-supplied SVG icon. A
+  group's marker is a chevron that turns when it opens, groups the reader opens
+  or closes stay so for the browser session, and the current page is scrolled
+  into the sidebar's view. `Sidebar` takes the `storage` prefix.
+- `Contents` takes `tree`: headings nest in collapsible branches that open as
+  the reader reaches them, and the label collapses the panel.
+- Fixed: `Page` adds a sidebar or rail column only when its slot renders
+  something, so a slot filled conditionally no longer leaves an empty column.
+- Fixed: the header's buttons are 32 pixels square, and the sidebar and
+  contents rows use the body's line height.
+
 ## 0.2.0 (2026-10-22)
 
 - Interactive components as Vue components on Reka UI, with `vue` and

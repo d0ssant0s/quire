@@ -1,7 +1,11 @@
 ---
 // The page's own contents, from the headings Astro reads out of Markdown. The
-// heading being read is marked as the reader scrolls.
+// heading being read is marked as the reader scrolls. With `tree`, deeper
+// headings nest under the heading above them in branches that start closed;
+// the branch holding the heading being read opens, and the label collapses
+// the whole panel, so a long page's contents fit the rail.
 import type { MarkdownHeading } from 'astro';
+import ContentsList, { type Branch } from './ContentsList.astro';
 import Eyebrow from './Eyebrow.astro';
 
 interface Props {
@@ -10,25 +14,35 @@ interface Props {
   minDepth?: number;
   maxDepth?: number;
   label?: string;
+  tree?: boolean;
 }
-const { headings, minDepth = 2, maxDepth = 3, label = 'On this page' } = Astro.props;
+const { headings, minDepth = 2, maxDepth = 3, label = 'On this page', tree = false } = Astro.props;
 const listed = headings.filter((heading) => heading.depth >= minDepth && heading.depth <= maxDepth);
+
+// Nests each heading under the nearest earlier heading shallower than it; a
+// flat list keeps every heading at the top.
+const roots: Branch[] = [];
+const stack: Branch[] = [];
+for (const heading of listed) {
+  const node: Branch = { ...heading, level: heading.depth - minDepth, children: [] };
+  while (stack.length && stack[stack.length - 1].depth >= heading.depth) stack.pop();
+  (tree && stack.length ? stack[stack.length - 1].children : roots).push(node);
+  stack.push(node);
+}
 ---
 
 {listed.length > 0 && (
-  <nav data-quire-contents class="py-8 pr-5 pl-2 text-sm" aria-label={label}>
-    <Eyebrow>{label}</Eyebrow>
-    <ul>
-      {listed.map((heading) => (
-        <li>
-          <a
-            href={`#${heading.slug}`}
-            data-level={heading.depth - minDepth}
-            class="block border-l border-line py-[3px] pl-3 text-muted hover:text-fg data-[level=1]:pl-6 data-[level=2]:pl-9 aria-[current=true]:border-fg aria-[current=true]:font-medium aria-[current=true]:text-fg"
-          >{heading.text}</a>
-        </li>
-      ))}
-    </ul>
+  <nav data-quire-contents class="py-8 pr-5 pl-2 text-sm leading-normal" aria-label={label}>
+    {tree ? (
+      <Eyebrow>
+        <button type="button" data-quire-contents-panel class="group flex cursor-pointer items-center gap-1.5 text-left" aria-expanded="true" aria-controls="quire-contents">
+          {label}<span aria-hidden="true" class="text-faint transition-transform group-aria-[expanded=false]:-rotate-90 motion-reduce:transition-none">▾</span>
+        </button>
+      </Eyebrow>
+    ) : (
+      <Eyebrow>{label}</Eyebrow>
+    )}
+    <ul id="quire-contents"><ContentsList nodes={roots} /></ul>
   </nav>
 )}
 
@@ -37,6 +51,20 @@ const listed = headings.filter((heading) => heading.depth >= minDepth && heading
   if (contents) {
     const links = [...contents.querySelectorAll<HTMLAnchorElement>('a')];
     const targets = links.map((link) => document.getElementById(decodeURIComponent(link.hash.slice(1))));
+    const setOpen = (branch: Element, open: boolean) => {
+      branch.querySelector(':scope > div > button')?.setAttribute('aria-expanded', String(open));
+      const list = branch.querySelector<HTMLElement>(':scope > ul');
+      if (list) list.hidden = !open;
+    };
+    for (const button of contents.querySelectorAll<HTMLButtonElement>('[data-quire-branch] > div > button')) {
+      button.addEventListener('click', () => setOpen(button.closest('[data-quire-branch]')!, button.getAttribute('aria-expanded') !== 'true'));
+    }
+    const panel = contents.querySelector<HTMLButtonElement>('[data-quire-contents-panel]');
+    panel?.addEventListener('click', () => {
+      const open = panel.getAttribute('aria-expanded') !== 'true';
+      panel.setAttribute('aria-expanded', String(open));
+      contents.querySelector<HTMLElement>('#quire-contents')!.hidden = !open;
+    });
     const mark = () => {
       // A heading counts as read once it passes the top quarter of the window,
       // or the scroll margin a link lands it at, whichever is lower.
@@ -48,6 +76,10 @@ const listed = headings.filter((heading) => heading.depth >= minDepth && heading
         if (target && target.getBoundingClientRect().top - offset <= 0) active = index;
       });
       links.forEach((link, index) => link.setAttribute('aria-current', String(index === active)));
+      // The branch holding the marked heading opens, and every branch around it.
+      for (let branch = links[active]?.closest('[data-quire-branch]'); branch; branch = branch.parentElement?.closest('[data-quire-branch]')) {
+        setOpen(branch, true);
+      }
     };
     addEventListener('scroll', mark, { passive: true });
     mark();

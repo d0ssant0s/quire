@@ -6,4 +6,4 @@ type Props = HTMLAttributes<'button'>;
 const { class: className, ...attributes } = Astro.props;
 ---
 
-<button type="button" {...attributes} class:list={['grid size-8 shrink-0 cursor-pointer place-items-center rounded-lg border border-line bg-surface text-muted hover:text-fg', className]}><slot /></button>
+<button type="button" {...attributes} class:list={['grid size-[32px] shrink-0 cursor-pointer place-items-center rounded-lg border border-line bg-surface text-muted hover:text-fg', className]}><slot /></button>

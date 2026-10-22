@@ -11,11 +11,15 @@ the accent and the code tokens.
 
 ## Lists and quotes
 
+### Lists
+
 - A bullet
 - Another, with **strong** text
 
 1. First
 2. Second
+
+### Quotes
 
 > A quotation stays muted and indented.
 
@@ -32,6 +36,10 @@ const answer = 42;
 | --- | --- |
 | Status | Done |
 | A long cell | Wide tables scroll inside their own frame rather than widening the page. |
+
+### Wide cells
+
+A cell wider than the frame scrolls the table, not the page.
 
 ## Disclosure
 

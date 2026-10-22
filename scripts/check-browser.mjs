@@ -1,6 +1,7 @@
 // Check the built example in a real browser: both themes and the system scheme,
-// highlighted code, the page shell at desktop and phone widths, a table that
-// scrolls in its frame, a targeted source line and reduced motion.
+// highlighted code, the page shell at desktop and phone widths, the sidebar and
+// contents tree, a table that scrolls in its frame, a targeted source line and
+// reduced motion.
 //
 // CHROMIUM names a Chromium binary to use; without it Playwright uses its own,
 // which `npx playwright install chromium` downloads.
@@ -187,6 +188,56 @@ else {
 }
 await reading.close();
 
+// A rail slot filled only when the page has headings: without them the shell
+// has no rail column, so the article is not squeezed beside an empty one.
+const note = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+await note.goto(`${base}/note/`);
+expect('a page without contents has no rail', await note.$$eval('[data-quire-rail]', (rails) => rails.length), 0);
+expect('a page without contents has two columns', await note.$eval('[data-quire-shell]', (shell) => getComputedStyle(shell).gridTemplateColumns.split(' ').length), 2);
+await note.close();
+
+// Sidebar: site icons; the current page is scrolled into the
+// sidebar's view without scrolling the page; groups the reader closes stay
+// closed on the next page, but never the group holding the current page.
+const navigation = await open({ width: 1280 });
+expect('a link carries its icon', await navigation.$$eval('[data-quire-nav] a[href="/"] svg', (icons) => icons.length), 1);
+expect('a group carries its icon', await navigation.$$eval('[data-quire-nav] summary svg', (icons) => icons.length >= 2), true);
+const placement = await navigation.evaluate(() => {
+  const box = document.querySelector('[data-quire-sidebar]').getBoundingClientRect();
+  const link = document.querySelector('[data-quire-nav] [aria-current=page]').getBoundingClientRect();
+  return { inside: link.top >= box.top && link.bottom <= box.bottom, page: scrollY };
+});
+expect('the current page is in the sidebar view', placement.inside, true);
+expect('the page itself does not scroll', placement.page, 0);
+const groupOpen = (page, label) => page.$eval(`[data-quire-group="/${label}"]`, (group) => group.open);
+expect('an uncollapsed group starts open', await groupOpen(navigation, 'Reference'), true);
+await navigation.click('[data-quire-group="/Reference"] > summary');
+await navigation.click('[data-quire-group="/Reading"] > summary');
+await navigation.reload();
+expect('a closed group stays closed on the next page', await groupOpen(navigation, 'Reference'), false);
+expect('the group holding the current page opens anyway', await groupOpen(navigation, 'Reading'), true);
+await navigation.close();
+
+// Contents tree: branches start closed except the one being read, toggle by
+// mouse and keyboard, and the label collapses the panel.
+const outline = await open({ width: 1440 });
+const toggles = '[data-quire-contents] [data-quire-branch] > div > button';
+const states = () => outline.$$eval(toggles, (buttons) => buttons.map((button) => button.getAttribute('aria-expanded')).join());
+expect('branches start closed but the one being read', await states(), 'true,false');
+const second = outline.locator(toggles).nth(1);
+const secondList = outline.locator('[data-quire-contents] [data-quire-branch]').nth(1).locator(':scope > ul');
+await second.click();
+expect('a click opens a branch', await secondList.isVisible(), true);
+await second.click();
+expect('a second click closes it', await secondList.isVisible(), false);
+await second.focus();
+await outline.keyboard.press('Enter');
+expect('Enter opens a branch', await second.getAttribute('aria-expanded'), 'true');
+await outline.click('[data-quire-contents-panel]');
+expect('the label collapses the panel', await outline.isVisible('#quire-contents'), false);
+expect('the collapsed panel says so', await outline.getAttribute('[data-quire-contents-panel]', 'aria-expanded'), 'false');
+await outline.close();
+
 // Search: Ctrl+K opens the dialog with the input focused; results come from the
 // endpoint and the keyboard opens one; a later query replaces a slower one;
 // an empty answer and a failing endpoint say so; Escape returns focus.
@@ -257,4 +308,4 @@ if (problems.length) {
   for (const problem of problems) console.error(`check-browser: ${problem}`);
   process.exit(1);
 }
-console.log('check-browser: themes, code, shell, menu, theme switch, contents, search, tables and source lines ok');
+console.log('check-browser: themes, code, shell, menu, theme switch, sidebar, contents tree, search, tables and source lines ok');

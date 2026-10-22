@@ -90,13 +90,19 @@ import ThemeScript from '@d0ssant0s/quire/components/ThemeScript.astro';
 | `Header` | The sticky header: a menu button when `menu` is set, the default slot for the site's name and links, an `end` slot for controls such as search, and the theme switch |
 | `ThemeSwitch` | Steps through the system scheme, light and dark, and remembers a pinned choice; the header includes it |
 | `Page` | The grid: a `sidebar` slot, the article, and a `rail` slot that appears once there is room; `wide` gives the article the whole width |
-| `Sidebar` | Section navigation from a tree of `NavItem` links and groups, marking the current page |
-| `Contents` | The page's headings, from Astro's Markdown headings, marking the one being read |
+| `Sidebar` | Section navigation from a tree of `NavItem` links and groups, marking the current page and scrolling it into view; groups the reader opens or closes stay so for the browser session |
+| `Contents` | The page's headings, from Astro's Markdown headings, marking the one being read; `tree` nests them in branches that open as the reader reaches them, for long pages |
 
-`ThemeScript`, `Header` and `ThemeSwitch` take a `storage` prefix for their
-`localStorage` keys, `<storage>-theme` and `<storage>-sidebar`; the default is
-`quire`. The menu button and the theme switch are small scripts in their
-components and need no framework.
+A `NavItem`, and the `Sidebar` label through its `icon` prop, can carry an
+icon: the markup of one `<svg>` element, drawn before the label in the text's
+colour. quire ships no icon set, and the markup is inserted as written, so it
+must come from the site's build.
+
+`ThemeScript`, `Header`, `ThemeSwitch` and `Sidebar` take a `storage` prefix
+for their browser storage keys, `<storage>-theme`, `<storage>-sidebar` and
+`<storage>-nav-groups`; the default is `quire`. The menu button, the theme
+switch and the navigation's scripts are small scripts in their components and
+need no framework.
 
 On the root element, `data-theme` pins the scheme, `data-sidebar-open` shows
 the sidebar on a phone and `data-sidebar-collapsed` hides it on a desktop. The
