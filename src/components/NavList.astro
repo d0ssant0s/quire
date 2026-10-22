@@ -1,28 +1,37 @@
 ---
 // One level of the section navigation; Sidebar renders the first. A nested
-// level hangs from a guide line under its group.
+// level hangs from a guide line under its group, and a group's chevron turns
+// when it opens.
 import type { NavItem } from '../types';
+import NavIcon from './NavIcon.astro';
 
-interface Props { items: NavItem[]; current?: string; depth?: number }
-const { items, current, depth = 0 } = Astro.props;
+interface Props { items: NavItem[]; current?: string; depth?: number; path?: string }
+const { items, current, depth = 0, path = '' } = Astro.props;
 const holds = (item: NavItem): boolean => (item.items ? item.items.some(holds) : item.href === current);
-const row = 'flex gap-2 rounded-[7px] px-2 py-[5px] hover:bg-subtle hover:text-fg';
+const row = 'flex items-center gap-2 rounded-[7px] px-2 py-[5px] hover:bg-subtle hover:text-fg';
 ---
 
 <ul class:list={['grid gap-px', depth > 0 && 'ml-4 border-l border-line pl-2']}>
   {items.map((item) => (
     <li>
       {item.items ? (
-        <details class="group" open={holds(item) || !item.collapsed}>
-          <summary class:list={[row, "cursor-pointer list-none justify-between font-medium text-fg after:text-faint after:content-['▸'] group-open:after:content-['▾'] [&::-webkit-details-marker]:hidden"]}>{item.label}</summary>
-          <Astro.self items={item.items} current={current} depth={depth + 1} />
+        <details class="group" open={holds(item) || !item.collapsed} data-quire-group={`${path}/${item.label}`}>
+          <summary class:list={[row, 'cursor-pointer list-none font-medium text-fg [&::-webkit-details-marker]:hidden']}>
+            {item.icon && <NavIcon svg={item.icon} class="text-muted" />}
+            <span class="min-w-0 flex-1">{item.label}</span>
+            <svg class="size-[15px] shrink-0 -rotate-90 text-faint transition-transform group-open:rotate-0 motion-reduce:transition-none" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4" /></svg>
+          </summary>
+          <Astro.self items={item.items} current={current} depth={depth + 1} path={`${path}/${item.label}`} />
         </details>
       ) : (
         <a
           href={item.href}
           aria-current={item.href === current ? 'page' : undefined}
           class:list={[row, 'text-muted aria-[current=page]:bg-accent-soft aria-[current=page]:font-medium aria-[current=page]:text-accent']}
-        >{item.label}</a>
+        >
+          {item.icon && <NavIcon svg={item.icon} />}
+          <span class="min-w-0 flex-1">{item.label}</span>
+        </a>
       )}
     </li>
   ))}

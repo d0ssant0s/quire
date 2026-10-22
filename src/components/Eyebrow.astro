@@ -1,5 +1,7 @@
 ---
 // The small uppercase label above a navigation list or panel.
+interface Props { class?: string }
+const { class: className } = Astro.props;
 ---
 
-<p class="mb-2 text-[11px] font-semibold tracking-[0.06em] text-faint uppercase"><slot /></p>
+<p class:list={['mb-2 text-[11px] font-semibold tracking-[0.06em] text-faint uppercase', className]}><slot /></p>

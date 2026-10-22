@@ -1,8 +1,11 @@
 ---
 // The section navigation, from a plain tree of links and groups. The link to
-// the current page is marked, and every group that holds it starts open.
+// the current page is marked and scrolled into view, and every group that
+// holds it starts open. Groups the reader opens or closes stay that way for
+// the rest of the browser session.
 import type { NavItem } from '../types';
 import Eyebrow from './Eyebrow.astro';
+import NavIcon from './NavIcon.astro';
 import NavList from './NavList.astro';
 
 interface Props {
@@ -11,11 +14,49 @@ interface Props {
   current?: string;
   /** The navigation's name, shown above it and read by screen readers. */
   label?: string;
+  /** An icon before the label, as `NavItem.icon` describes. */
+  icon?: string;
+  /** Prefix of the sessionStorage key `<storage>-nav-groups`. */
+  storage?: string;
 }
-const { items, current, label = 'Sections' } = Astro.props;
+const { items, current, label = 'Sections', icon, storage = 'quire' } = Astro.props;
 ---
 
-<nav data-quire-nav class="min-h-full border-r border-line px-3 pt-5 pb-8 text-sm" aria-label={label}>
-  <div class="px-2"><Eyebrow>{label}</Eyebrow></div>
+<nav data-quire-nav data-quire-storage={storage} class="min-h-full border-r border-line px-3 pt-5 pb-8 text-sm leading-normal" aria-label={label}>
+  <div class="px-2"><Eyebrow class="flex items-center gap-2">{icon && <NavIcon svg={icon} />}{label}</Eyebrow></div>
   <NavList items={items} current={current} />
 </nav>
+
+<script>
+  const nav = document.querySelector<HTMLElement>('[data-quire-nav]');
+  if (nav) {
+    const key = `${nav.dataset.quireStorage}-nav-groups`;
+    let saved: Record<string, boolean> = {};
+    try {
+      saved = JSON.parse(sessionStorage.getItem(key) ?? '{}');
+    } catch {
+      // Without storage the groups start as the page builds them.
+    }
+    for (const group of nav.querySelectorAll<HTMLDetailsElement>('details[data-quire-group]')) {
+      const name = group.dataset.quireGroup!;
+      if (name in saved && !group.querySelector('[aria-current=page]')) group.open = saved[name];
+      group.addEventListener('toggle', () => {
+        saved[name] = group.open;
+        try {
+          sessionStorage.setItem(key, JSON.stringify(saved));
+        } catch {
+          // The choice then lasts only for this page.
+        }
+      });
+    }
+    // Centre the current page in the sidebar's own scroll box, leaving the
+    // page's scroll alone.
+    const link = nav.querySelector<HTMLElement>('[aria-current=page]');
+    let box: HTMLElement | null = nav.parentElement;
+    while (box && box !== document.body && !/(auto|scroll)/.test(getComputedStyle(box).overflowY)) box = box.parentElement;
+    if (link && box && box !== document.body) {
+      const offset = link.getBoundingClientRect().top - box.getBoundingClientRect().top;
+      box.scrollTop += offset - (box.clientHeight - link.offsetHeight) / 2;
+    }
+  }
+</script>

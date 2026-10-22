@@ -1,0 +1,35 @@
+---
+// One level of the contents tree; Contents renders the first. A heading with
+// headings under it is a branch with a toggle, closed until opened.
+import type { MarkdownHeading } from 'astro';
+
+export interface Branch extends MarkdownHeading { level: number; children: Branch[] }
+interface Props { nodes: Branch[] }
+const { nodes } = Astro.props;
+---
+
+{nodes.map((node) => (
+  <li data-quire-branch={node.children.length ? '' : undefined}>
+    <div class="flex items-stretch">
+      <a
+        href={`#${node.slug}`}
+        data-level={node.level}
+        class="block min-w-0 flex-1 border-l border-line py-[3px] pl-3 text-muted hover:text-fg data-[level=1]:pl-6 data-[level=2]:pl-9 aria-[current=true]:border-fg aria-[current=true]:font-medium aria-[current=true]:text-fg"
+      >{node.text}</a>
+      {node.children.length > 0 && (
+        <button
+          type="button"
+          class="group cursor-pointer px-1.5 text-faint hover:text-fg"
+          aria-expanded="false"
+          aria-controls={`quire-contents-${node.slug}`}
+          aria-label={`Contents of ${node.text}`}
+        ><span aria-hidden="true" class="inline-block transition-transform group-aria-expanded:rotate-90 motion-reduce:transition-none">▸</span></button>
+      )}
+    </div>
+    {node.children.length > 0 && (
+      <ul id={`quire-contents-${node.slug}`} hidden>
+        <Astro.self nodes={node.children} />
+      </ul>
+    )}
+  </li>
+))}
