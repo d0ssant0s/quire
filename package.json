@@ -34,7 +34,8 @@
   ],
   "scripts": {
     "build": "npm --workspace examples/basic run build",
-    "check": "npm run check:references && npm run check:commits && npm run build && node scripts/check-styles.mjs && node scripts/check-license.mjs",
+    "check": "npm run check:references && npm run check:commits && npm run build && node scripts/check-styles.mjs && node scripts/check-license.mjs && npm run check:install",
+    "check:install": "node scripts/check-install.mjs",
     "check:references": "node --test scripts/check-references.test.mjs && node scripts/check-references.mjs",
     "check:commits": "node --test scripts/changelog.test.mjs",
     "changelog": "node scripts/changelog.mjs",
