@@ -140,16 +140,87 @@ quire imports `@astrojs/vue` either way, but adds the integration only when
 the option is set. Without it, a site has no Vue in its build and its pages
 ship none.
 
-A component that reads live data takes an endpoint URL and shows waiting,
-empty and failed states. An Astro page can pass a hydrated component only
-serialisable props, so a function never crosses that boundary.
+A component that reads live data takes an endpoint URL, or, from the site's own
+Vue code, a source function, and shows waiting, empty and failed states. An
+Astro page can pass a hydrated component only serialisable props, so a function
+never crosses that boundary: the page hydrates a small Vue component of the
+site's, which passes the function to quire's.
 
 | Component | What it does |
 | --- | --- |
-| `Search` | A search dialog opened from the header or with Ctrl+K or ⌘K. It asks `<endpoint>?q=<query>`, which answers `{ "results": SearchResult[] }`, and a newer query cancels the request before it |
+| `Search` | A search dialog opened from the header or with Ctrl+K or ⌘K. Its answers come from an `endpoint` or a `source` function |
 
-`SearchResult` is exported from the package: `title` and `url`, with an
-optional `section` and a plain-text `excerpt`.
+### Search
+
+| Prop | |
+| --- | --- |
+| `endpoint` | A URL. quire asks `<endpoint>?q=<query>`, adding `&filter=<name>` when a filter is chosen, and the endpoint answers `{ "results": SearchResult[], "filters"?: SearchFilter[] }` |
+| `source` | A function `(query, { signal, filter }) => Promise<SearchAnswer>`, used instead of `endpoint`. See below |
+| `label`, `placeholder` | The button's and the field's text; the label also names the field for screen readers |
+| `minLength` | Characters a query needs before it is asked. Default 2 |
+| `delay` | Milliseconds of quiet typing before a query is asked. Default 150 |
+
+A newer query, a cleared one or a closed dialog cancels the request in flight:
+the `signal` is aborted, and quire drops the answer itself if it arrives
+anyway, so a slow answer never replaces a later query's results or brings
+results back after the query is cleared. quire also leaves out results that
+lack a title or an `http` or `https` address, and treats an error, or a
+malformed answer, as the failed state. A retry asks again with the same query
+and the same filter.
+
+`SearchResult`, `SearchFilter`, `SearchAnswer` and `SearchSource` are exported
+as types. A result has a `title` and `url`, an optional `section`, a plain-text
+`excerpt` and an optional `category`.
+
+**Filters.** Results of a categorised index can be narrowed. An answer is either a
+list of results, in which case quire offers one filter for each `category` the
+results carry, counted from them and applied by hiding the other categories;
+or `{ results, filters }`, where `filters` are `{ name, count }` for the whole
+query whichever filter is chosen, and the source narrows the results itself
+using the `filter` it is given. The chosen filter stays listed even when the
+next query has none of it, and survives a retry.
+
+**Screen readers.** The field is named by `label` and names the highlighted result
+with `aria-activedescendant`. The results are a labelled listbox; the filters are
+a labelled group of toggle buttons, each pressed or not, with its count. A status
+region announces waiting (`Searching…`), the number of results, with the filter
+when one is chosen, and an empty answer. A failure is an alert with a Retry
+button, and the field is `aria-busy` while a query is out.
+
+```vue
+<!-- src/components/SiteSearch.vue -->
+<script setup lang="ts">
+import Search from '@d0ssant0s/quire/vue/Search.vue';
+import { pagefindSource } from '@d0ssant0s/quire/search';
+
+const source = pagefindSource('/pagefind/', { filter: 'type' });
+</script>
+
+<template>
+  <Search :source="source" />
+</template>
+```
+
+```astro
+<SiteSearch slot="end" client:idle />
+```
+
+**`pagefindSource(base?, options?)`**, imported from `@d0ssant0s/quire/search`
+(not from the package root, which is the Astro integration), adapts the
+[Pagefind](https://pagefind.app) index in the directory `base`, `/pagefind/` by
+default. quire does not depend on Pagefind: the helper loads `pagefind.js` from
+your site when the first query runs, and tries again on a retry if that load
+failed. A result's title and `section` come from the page's Pagefind
+metadata, its excerpt as text with Pagefind's highlighting removed. Options:
+
+| Option | |
+| --- | --- |
+| `filter` | The name of a Pagefind filter (`data-pagefind-filter="type"`). Its values become the results' categories and the filters, counted across the whole query as Pagefind counts them, and the chosen one narrows the search itself. Without it there are no filters |
+| `limit` | Results loaded per query. Default 20 |
+| `options` | Passed once to `pagefind.options()`, for `excerptLength`, `ranking` and the like |
+
+A site that ranks results its own way, or promotes an exact match, writes its
+own `SearchSource` and can call `pagefindSource` inside it.
 
 ## Reading classes
 

@@ -4,11 +4,14 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build"
+    "build": "astro build && pagefind --site dist"
   },
   "dependencies": {
     "@d0ssant0s/quire": "file:../..",
     "astro": "7.4.0",
     "tailwindcss": "4.3.3"
+  },
+  "devDependencies": {
+    "pagefind": "1.6.0"
   }
 }

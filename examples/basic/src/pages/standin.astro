@@ -1,0 +1,8 @@
+---
+import Bare from '../layouts/Bare.astro';
+import StandInSearch from '../components/StandInSearch.vue';
+---
+<Bare title="Stand-in search">
+  <StandInSearch slot="end" client:idle />
+  <p class="text-muted">Search is fed by a function that stands in for a service, so the browser check can make it slow or make it fail.</p>
+</Bare>
