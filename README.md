@@ -148,7 +148,7 @@ site's, which passes the function to quire's.
 
 | Component | What it does |
 | --- | --- |
-| `Search` | A search dialog opened from the header or with Ctrl+K or ⌘K. Its answers come from an `endpoint` or a `source` function |
+| `Search` | A search dialog opened from the header, with Ctrl+K or ⌘K, or by the site's own code. Its answers come from an `endpoint` or a `source` function |
 
 ### Search
 
@@ -159,6 +159,10 @@ site's, which passes the function to quire's.
 | `label`, `placeholder` | The button's and the field's text; the label also names the field for screen readers |
 | `minLength` | Characters a query needs before it is asked. Default 2 |
 | `delay` | Milliseconds of quiet typing before a query is asked. Default 150 |
+| `shortcuts` | The keys that open the dialog, a list of `'mod+k'` (Ctrl or ⌘ with K) and `'/'`. Default `['mod+k']`. `[]` has none, and the first one is shown on the button |
+| `trigger` | Whether to show the built-in button. Default `true` |
+| `v-model:open` | Whether the dialog is open. Default `false` |
+| `v-model:query` | The text in the field. Default `''` |
 
 A newer query, a cleared one or a closed dialog cancels the request in flight:
 the `signal` is aborted, and quire drops the answer itself if it arrives
@@ -186,6 +190,57 @@ a labelled group of toggle buttons, each pressed or not, with its count. A statu
 region announces waiting (`Searching…`), the number of results, with the filter
 when one is chosen, and an empty answer. A failure is an alert with a Retry
 button, and the field is `aria-busy` while a query is out.
+
+**Driving it from the site.** A site's own buttons, links and keys can open
+the dialog and fill it, because `open` and `query` are models (`defineModel`).
+Both work without `v-model` too. Setting `query` runs the search at once, with
+no typing pause, through the same cancellation: a slow answer to an earlier
+query is dropped, and setting `''` clears the results and cancels the request.
+Typing still waits `delay`, and the model follows what the reader types. Set
+`open` and `query` together to open the dialog with a query already searched. A
+query set while the dialog is closed is asked when it opens.
+
+`shortcuts` adds the `/` key. It is ignored while the reader is typing in an
+`input`, `textarea`, `select` or contenteditable element, with Ctrl, ⌘ or Alt
+held, and while the dialog is open. To use your own button instead of the
+built-in one, set `:trigger="false"`, or put it in the `trigger` slot, where
+it becomes the dialog's trigger (give it one element, such as a `button`).
+Focus returns to the element that had it when the dialog opened, or to the
+trigger.
+
+A page in Astro hydrates one wrapper, which listens for the buttons outside the
+island (here marked `data-search-open`) and for a deep link, since a URL
+parameter is the site's business:
+
+```vue
+<!-- src/components/DrivenSearch.vue -->
+<script setup lang="ts">
+import Search from '@d0ssant0s/quire/vue/Search.vue';
+import { pagefindSource } from '@d0ssant0s/quire/search';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+
+const source = pagefindSource('/pagefind/');
+const open = ref(false);
+const query = ref('');
+
+const opener = (event: MouseEvent) => {
+  if (event.target instanceof Element && event.target.closest('[data-search-open]')) open.value = true;
+};
+onMounted(() => {
+  document.addEventListener('click', opener);
+  const term = new URLSearchParams(location.search).get('search');
+  if (term) {
+    query.value = term;
+    open.value = true;
+  }
+});
+onBeforeUnmount(() => document.removeEventListener('click', opener));
+</script>
+
+<template>
+  <Search v-model:open="open" v-model:query="query" :source="source" :shortcuts="['mod+k', '/']" :trigger="false" />
+</template>
+```
 
 ```vue
 <!-- src/components/SiteSearch.vue -->

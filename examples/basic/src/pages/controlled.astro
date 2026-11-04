@@ -1,0 +1,20 @@
+---
+import Bare from '../layouts/Bare.astro';
+import ControlledSearch from '../components/ControlledSearch.vue';
+---
+<Bare title="Controlled search">
+  <ControlledSearch slot="end" client:idle trigger="hidden" />
+  <p class="text-muted">Search is opened and filled by the buttons below, which sit outside the island that holds it.</p>
+  <p class="mt-4 flex flex-wrap gap-2">
+    <button type="button" data-search-open class="rounded-lg border border-line px-2.5">Open search</button>
+    <button type="button" data-search-preset="home" class="rounded-lg border border-line px-2.5">Search home</button>
+    <button type="button" data-search-preset="slowx" class="rounded-lg border border-line px-2.5">Search slowx</button>
+    <button type="button" data-search-clear class="rounded-lg border border-line px-2.5">Clear search</button>
+  </p>
+  <p class="mt-4 flex flex-col gap-2">
+    <input aria-label="Text field" class="rounded-lg border border-line px-2" />
+    <textarea aria-label="Text area" class="rounded-lg border border-line px-2"></textarea>
+    <select aria-label="Choice" class="rounded-lg border border-line px-2"><option>One</option></select>
+    <span contenteditable="true" role="textbox" aria-label="Editable" class="rounded-lg border border-line px-2">Edit me</span>
+  </p>
+</Bare>

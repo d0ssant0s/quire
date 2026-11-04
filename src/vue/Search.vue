@@ -1,11 +1,13 @@
 <script setup lang="ts">
-// Search in a dialog opened from the header or with Ctrl+K or ⌘K. Each
+// Search in a dialog opened from the header, with a shortcut, or by the site's
+// own code through `v-model:open` and `v-model:query`. Each
 // keystroke after a short pause asks for answers, either from a `source`
 // function that the site's own Vue component passes, or from
 // `<endpoint>?q=<query>`, which answers `{ results: SearchResult[] }`. A newer
 // query cancels the one before it and drops its answer if it still arrives, so
 // a slow answer never replaces a faster, later one, nor brings results back
-// after the query is cleared. Reka's dialog and listbox supply focus handling
+// after the query is cleared. A query the site sets is asked at once, not after
+// the pause. Reka's dialog and listbox supply focus handling
 // and keyboard selection; the styles follow shadcn-vue's command dialog.
 import { DialogContent, DialogDescription, DialogOverlay, DialogPortal, DialogRoot, DialogTitle, DialogTrigger, ListboxContent, ListboxFilter, ListboxItem, ListboxRoot } from 'reka-ui';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -26,13 +28,20 @@ const props = withDefaults(
     minLength?: number;
     /** Milliseconds of quiet typing before a query is asked. */
     delay?: number;
+    /** Keys that open the dialog: Ctrl or ⌘ with K, and `/` outside text fields. */
+    shortcuts?: Shortcut[];
+    /** Whether to show the built-in button; a site with its own buttons hides it. */
+    trigger?: boolean;
   }>(),
-  { label: 'Search', placeholder: 'Search the documentation', minLength: 2, delay: 150 },
+  { label: 'Search', placeholder: 'Search the documentation', minLength: 2, delay: 150, shortcuts: () => ['mod+k'], trigger: true },
 );
 
+type Shortcut = 'mod+k' | '/';
+const hints: Record<Shortcut, string> = { 'mod+k': 'Ctrl K', '/': '/' };
+
 type State = 'idle' | 'loading' | 'results' | 'empty' | 'error';
-const open = ref(false);
-const query = ref('');
+const open = defineModel<boolean>('open', { default: false });
+const query = defineModel<string>('query', { default: '' });
 const filter = ref('');
 const state = ref<State>('idle');
 // What the source answered, before the chosen filter hides any of it.
@@ -43,6 +52,8 @@ const input = ref<{ $el: HTMLElement }>();
 // The request whose answer may still be used; cancelling clears it.
 let pending: AbortController | undefined;
 let timer: ReturnType<typeof setTimeout> | undefined;
+// What the reader last typed, to tell their keystrokes from a query the site set.
+let typed: string | undefined;
 
 const results = computed(() => (filter.value ? answered.value.filter((result) => result.category === filter.value) : answered.value));
 // The chosen filter stays listed when a query has none of it, so it can be left.
@@ -124,15 +135,21 @@ async function search() {
 
 const ready = () => query.value.trim().length >= props.minLength;
 
-watch(query, () => {
+function type(value: string | number | undefined) {
+  typed = query.value = String(value ?? '');
+}
+
+watch(query, (value) => {
+  const keystroke = value === typed;
+  typed = undefined;
   cancel();
-  if (!ready()) {
+  // A closed dialog asks when it opens.
+  if (!ready() || !open.value) {
     answered.value = [];
     filters.value = [];
     state.value = 'idle';
-    return;
-  }
-  timer = setTimeout(search, props.delay);
+  } else if (keystroke) timer = setTimeout(search, props.delay);
+  else search();
 });
 
 function choose(name: string, event: MouseEvent) {
@@ -154,11 +171,17 @@ function go(url: unknown) {
   if (typeof url === 'string' && url) location.assign(url);
 }
 
+const typing = (target: EventTarget | null) => target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+
 function shortcut(event: KeyboardEvent) {
-  if (event.key.toLowerCase() === 'k' && (event.ctrlKey || event.metaKey)) {
-    event.preventDefault();
-    open.value = true;
-  }
+  const modified = event.ctrlKey || event.metaKey;
+  const wanted =
+    event.key.toLowerCase() === 'k' && modified
+      ? props.shortcuts.includes('mod+k')
+      : event.key === '/' && !modified && !event.altKey && !event.isComposing && !event.defaultPrevented && !open.value && !typing(event.target) && props.shortcuts.includes('/');
+  if (!wanted) return;
+  event.preventDefault();
+  open.value = true;
 }
 onMounted(() => addEventListener('keydown', shortcut));
 onBeforeUnmount(() => {
@@ -180,13 +203,18 @@ const summary = computed(() => {
 
 <template>
   <DialogRoot v-model:open="open">
-    <DialogTrigger
-      data-quire-search
-      class="flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-2.5 text-faint hover:border-line-strong"
-    >
-      <svg class="size-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.5" /><path d="m10.5 10.5 3 3" /></svg>
-      <span class="hidden sm:inline">{{ label }}</span>
-      <kbd class="hidden rounded-[5px] border border-line bg-subtle px-1.5 font-mono text-[11px] text-muted sm:inline">Ctrl K</kbd>
+    <DialogTrigger v-if="trigger" as-child>
+      <slot name="trigger">
+        <button
+          type="button"
+          data-quire-search
+          class="flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-2.5 text-faint hover:border-line-strong"
+        >
+          <svg class="size-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.5" /><path d="m10.5 10.5 3 3" /></svg>
+          <span class="hidden sm:inline">{{ label }}</span>
+          <kbd v-if="shortcuts.length" class="hidden rounded-[5px] border border-line bg-subtle px-1.5 font-mono text-[11px] text-muted sm:inline">{{ hints[shortcuts[0]] }}</kbd>
+        </button>
+      </slot>
     </DialogTrigger>
     <DialogPortal>
       <DialogOverlay class="fixed inset-0 z-50 bg-black/40" />
@@ -200,12 +228,13 @@ const summary = computed(() => {
             <svg class="size-4 shrink-0 text-muted" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.5" /><path d="m10.5 10.5 3 3" /></svg>
             <ListboxFilter
               ref="input"
-              v-model="query"
+              :model-value="query"
               auto-focus
               :aria-label="label"
               :placeholder="placeholder"
               :aria-busy="state === 'loading'"
               class="h-full w-full bg-transparent text-sm outline-hidden placeholder:text-faint"
+              @update:model-value="type"
             />
           </div>
           <div v-if="choices.length > 1 || filter" role="group" aria-label="Filter results" data-quire-search-filters class="flex flex-wrap gap-1.5 border-b border-line px-3 py-2">

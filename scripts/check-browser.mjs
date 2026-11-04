@@ -245,6 +245,9 @@ await outline.close();
 // returns focus.
 const finder = await open({ width: 1280 });
 await finder.waitForFunction(() => document.querySelector('[data-quire-search]') && !document.querySelector('astro-island[ssr]'));
+await finder.keyboard.press('/');
+await finder.waitForTimeout(200);
+expect('the slash key does nothing unless asked for', await finder.locator('[role=dialog]').count(), 0);
 await finder.keyboard.press('Control+K');
 await finder.waitForSelector('[role=dialog]');
 expect('Ctrl+K focuses the search input', await finder.evaluate(() => document.activeElement?.tagName), 'INPUT');
@@ -362,6 +365,133 @@ await said(standIn, '2 results in Pages.');
 expect('quire hides the results of other categories', (await options(standIn)).join('|'), 'HomeThe example page|Short noteA page without headings');
 await standIn.close();
 
+// Search driven by the site: a wrapper component holds `v-model:open` and
+// `v-model:query`, and buttons outside the island open it, fill it and clear it.
+// The `/` key opens it unless the reader is typing, a query the site sets is
+// asked at once, a slow earlier answer never overwrites it, and focus returns
+// to the button that opened the dialog.
+const driven = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+await driven.goto(`${base}/controlled/`);
+await driven.waitForFunction(() => document.querySelector('[data-search-state]') && !document.querySelector('astro-island[ssr]'));
+const held = () => driven.$eval('[data-search-state]', (element) => element.textContent.trim());
+const dialogs = () => driven.locator('[role=dialog]').count();
+const pushed = (selector) => driven.evaluate((target) => document.querySelector(target).click(), selector);
+const inField = '[role=dialog] input';
+expect('the site can hide the built-in button', await driven.locator('[data-quire-search]').count(), 0);
+expect('the site reads the models before use', await held(), 'open=false query=');
+await driven.click('[data-search-open]');
+await driven.waitForSelector('[role=dialog]');
+expect('a button outside the island opens the dialog', await held(), 'open=true query=');
+expect('an external open focuses the search input', await driven.evaluate(() => document.activeElement?.tagName), 'INPUT');
+await driven.keyboard.press('Escape');
+await driven.waitForSelector('[role=dialog]', { state: 'detached' });
+expect('Escape returns focus to the external button', await driven.evaluate(() => document.activeElement?.hasAttribute('data-search-open')), true);
+expect('the site reads the dialog closing', await held(), 'open=false query=');
+// The slash key opens the dialog, and is not typed into it.
+await driven.keyboard.press('/');
+await driven.waitForSelector('[role=dialog]');
+expect('the slash key opens the dialog', await held(), 'open=true query=');
+expect('the slash key is not typed into the field', await driven.inputValue(inField), '');
+await driven.keyboard.type('read');
+await driven.waitForSelector('[role=dialog] [role=option]');
+expect('the site reads what the reader types', await held(), 'open=true query=read');
+expect('the typed query is searched', (await options(driven)).join('|'), 'Reading styles');
+await driven.keyboard.press('Escape');
+await driven.waitForSelector('[role=dialog]', { state: 'detached' });
+// Typing a slash in a field, or with a modifier, opens nothing.
+for (const selector of ['input[aria-label="Text field"]', 'textarea', 'select', '[contenteditable]']) {
+  await driven.focus(selector);
+  await driven.keyboard.press('/');
+  await driven.waitForTimeout(150);
+  expect(`the slash key does not open search from ${selector}`, await dialogs(), 0);
+}
+expect('a slash typed into a field stays in it', await driven.inputValue('input[aria-label="Text field"]'), '/');
+await driven.evaluate(() => document.activeElement.blur());
+await driven.keyboard.press('Control+/');
+await driven.waitForTimeout(150);
+expect('Ctrl+/ does not open search', await dialogs(), 0);
+// A preset query opens the dialog and is asked before the typing pause.
+await driven.evaluate(() => (window.quireControlled.calls.length = 0));
+await driven.focus('[data-search-preset="home"]');
+await driven.evaluate(() => {
+  document.querySelector('[data-search-preset="home"]').click();
+  window.quireControlled.pressed = performance.now();
+});
+await said(driven, '1 result.');
+expect('a preset query opens the dialog with it', [await held(), await driven.inputValue(inField)].join(), 'open=true query=home,home');
+expect('a preset query lists its results', (await options(driven)).join('|'), 'Home');
+expect('a preset query is asked once', await driven.evaluate(() => window.quireControlled.calls.map((call) => call.query).join()), 'home');
+expect('a preset query is asked before the typing pause', await driven.evaluate(() => window.quireControlled.calls[0].at - window.quireControlled.pressed < 100), true);
+// A slow earlier answer that is still pending does not overwrite the preset.
+await driven.fill(inField, 'slowy');
+await driven.waitForTimeout(350);
+await pushed('[data-search-preset="home"]');
+await driven.waitForTimeout(900);
+expect('a preset replaces a pending slow answer', (await options(driven)).join('|'), 'Home');
+expect('the slow answer did not come back', (await options(driven)).includes('Stale'), false);
+expect('the field shows the preset', await driven.inputValue(inField), 'home');
+// So does one set while the dialog is closed.
+await driven.keyboard.press('Escape');
+await driven.waitForSelector('[role=dialog]', { state: 'detached' });
+await driven.click('[data-search-preset="slowx"]');
+await driven.waitForSelector('[role=dialog]');
+await driven.waitForTimeout(250);
+await pushed('[data-search-preset="home"]');
+await driven.waitForTimeout(900);
+expect('a preset set over a pending one wins', (await options(driven)).join('|'), 'Home');
+// Clearing the query through the model empties the field and cancels what is pending.
+await pushed('[data-search-clear]');
+await said(driven, 'Type at least 2 characters.');
+expect('clearing through the model empties the field', await driven.inputValue(inField), '');
+expect('clearing through the model removes the results', (await options(driven)).length, 0);
+expect('the site reads the cleared query', await held(), 'open=true query=');
+await pushed('[data-search-preset="slowx"]');
+await driven.waitForTimeout(250);
+await pushed('[data-search-clear]');
+await driven.waitForTimeout(900);
+expect('a cleared query is not refilled by a late answer, through the model', (await options(driven)).length, 0);
+await driven.keyboard.press('Escape');
+await driven.waitForSelector('[role=dialog]', { state: 'detached' });
+expect('Escape returns focus to the button that set the query', await driven.evaluate(() => document.activeElement?.getAttribute('data-search-preset')), 'slowx');
+// A query set while the dialog is closed is asked when it opens.
+await driven.evaluate(() => (window.quireControlled.calls.length = 0));
+await driven.click('[data-search-clear]');
+await driven.keyboard.press('/');
+await driven.waitForSelector('[role=dialog]');
+await driven.keyboard.press('Escape');
+await driven.waitForSelector('[role=dialog]', { state: 'detached' });
+expect('a query set while closed is not asked', await driven.evaluate(() => window.quireControlled.calls.length), 0);
+await driven.close();
+
+// A deep link: the wrapper reads ?search=<term> and sets the models.
+const linked = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+await linked.goto(`${base}/controlled/?search=home`);
+await linked.waitForSelector('[role=dialog] [role=option]');
+expect('a deep link opens search with its term', [await linked.inputValue(inField), (await options(linked)).join('|')].join(), 'home,Home');
+await linked.close();
+
+// A site's own trigger in the slot, and only the slash key as a shortcut.
+const custom = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+await custom.goto(`${base}/custom-trigger/`);
+await custom.waitForFunction(() => document.querySelector('[data-custom-trigger]') && !document.querySelector('astro-island[ssr]'));
+expect('the slot replaces the built-in button', await custom.locator('[data-quire-search]').count(), 0);
+expect('the slotted button is the dialog trigger', await custom.getAttribute('[data-custom-trigger]', 'aria-haspopup'), 'dialog');
+await custom.keyboard.press('Control+K');
+await custom.waitForTimeout(150);
+expect('Ctrl+K is inert when it is not a shortcut', await custom.locator('[role=dialog]').count(), 0);
+await custom.click('[data-custom-trigger]');
+await custom.waitForSelector('[role=dialog]');
+await custom.keyboard.press('Escape');
+await custom.waitForSelector('[role=dialog]', { state: 'detached' });
+expect('Escape returns focus to the slotted button', await custom.evaluate(() => document.activeElement?.hasAttribute('data-custom-trigger')), true);
+await custom.evaluate(() => document.activeElement.blur());
+await custom.keyboard.press('/');
+await custom.waitForSelector('[role=dialog]');
+await custom.keyboard.press('Escape');
+await custom.waitForSelector('[role=dialog]', { state: 'detached' });
+expect('Escape after the slash key returns focus to the slotted button', await custom.evaluate(() => document.activeElement?.hasAttribute('data-custom-trigger')), true);
+await custom.close();
+
 // Search over the example's own Pagefind index, through pagefindSource: the
 // script loads when the first query runs and not before, excerpts arrive as
 // text, the category filter has Pagefind's counts, and a script that failed to
@@ -436,4 +566,4 @@ if (problems.length) {
   for (const problem of problems) console.error(`check-browser: ${problem}`);
   process.exit(1);
 }
-console.log('check-browser: themes, code, shell, menu, theme switch, sidebar, contents tree, search (endpoint, source and Pagefind), tables and source lines ok');
+console.log('check-browser: themes, code, shell, menu, theme switch, sidebar, contents tree, search (endpoint, source, site-driven and Pagefind), tables and source lines ok');
