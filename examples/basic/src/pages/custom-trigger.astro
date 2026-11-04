@@ -1,0 +1,8 @@
+---
+import Bare from '../layouts/Bare.astro';
+import ControlledSearch from '../components/ControlledSearch.vue';
+---
+<Bare title="Custom trigger">
+  <ControlledSearch slot="end" client:idle trigger="slot" shortcuts={['/']} />
+  <p class="text-muted">The site's own button replaces the built-in one, and only the slash key opens search.</p>
+</Bare>
