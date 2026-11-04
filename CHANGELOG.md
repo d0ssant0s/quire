@@ -8,6 +8,14 @@ since the previous release, grouped as Breaking changes, Features, Changed,
 Fixed and Security; `npm run changelog` shows the next one. The release page
 on GitHub carries the same section.
 
+## 0.4.0 (2026-11-04)
+
+### Features
+
+- **search:** let a site open it, preset a query and read its state (#34)
+
+[All commits](https://github.com/d0ssant0s/quire/compare/v0.3.0...v0.4.0)
+
 ## 0.3.0 (2026-11-04)
 
 ### Features
