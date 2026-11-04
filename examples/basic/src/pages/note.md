@@ -1,5 +1,6 @@
 ---
 layout: ../layouts/Doc.astro
+kind: Short pages
 title: Short note
 ---
 

@@ -1,5 +1,6 @@
 ---
 layout: ../layouts/Doc.astro
+kind: Reading
 title: Reading styles
 ---
 

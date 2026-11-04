@@ -1,0 +1,8 @@
+---
+import Bare from '../layouts/Bare.astro';
+import IndexSearch from '../components/IndexSearch.vue';
+---
+<Bare title="Indexed search">
+  <IndexSearch slot="end" client:idle />
+  <p class="text-muted">Search is fed by the Pagefind index of the other pages.</p>
+</Bare>

@@ -17,6 +17,7 @@
   ],
   "exports": {
     ".": "./src/index.ts",
+    "./search": "./src/search.ts",
     "./tokens.css": "./styles/tokens.css",
     "./theme.css": "./styles/theme.css",
     "./prose.css": "./styles/prose.css",

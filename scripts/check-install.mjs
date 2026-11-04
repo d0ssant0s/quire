@@ -5,8 +5,9 @@
 // example resolves quire outside node_modules and never meets that runner, so
 // only this check can catch a hook that imports lazily.
 //
-// Two builds: with `quire({ vue: true })` and a hydrated Search.vue, which must
-// build and ship the island; and with `quire()` and no components, whose pages
+// Two builds: with `quire({ vue: true })` and a hydrated Search.vue, both with
+// an endpoint and wrapped by a site component that passes a `pagefindSource`,
+// which must build and ship the islands; and with `quire()` and no components, whose pages
 // must ship no script at all.
 //
 // The install takes packages from the local npm cache and reaches the registry
@@ -38,7 +39,7 @@ try {
   if (!packed.ok) throw new Error(`npm pack failed\n${packed.output}`);
   const tarball = join(work, packed.output.trim().split('\n').pop());
 
-  const site = (name, { config, page }) => {
+  const site = (name, { config, page, files = {} }) => {
     const dir = join(work, name);
     mkdirSync(join(dir, 'src/pages'), { recursive: true });
     mkdirSync(join(dir, 'src/styles'), { recursive: true });
@@ -49,6 +50,10 @@ try {
     writeFileSync(join(dir, 'astro.config.mjs'), `import { defineConfig } from 'astro/config';\nimport quire from '@d0ssant0s/quire';\nexport default defineConfig({ integrations: [${config}] });\n`);
     writeFileSync(join(dir, 'src/styles/site.css'), "@import 'tailwindcss';\n@import '@d0ssant0s/quire/theme.css';\n");
     writeFileSync(join(dir, 'src/pages/index.astro'), page);
+    for (const [path, content] of Object.entries(files)) {
+      mkdirSync(join(dir, path, '..'), { recursive: true });
+      writeFileSync(join(dir, path), content);
+    }
     return dir;
   };
 
@@ -57,9 +62,20 @@ try {
     page: `---
 import '../styles/site.css';
 import Search from '@d0ssant0s/quire/vue/Search.vue';
+import Indexed from '../components/Indexed.vue';
 ---
-<html lang="en"><head><title>vue</title></head><body><Search client:load endpoint="/api/search" /></body></html>
+<html lang="en"><head><title>vue</title></head><body><Search client:load endpoint="/api/search" /><Indexed client:load /></body></html>
 `,
+    // The wrapper a site writes to give Search a function, which an Astro page cannot pass.
+    files: {
+      'src/components/Indexed.vue': `<script setup lang="ts">
+import Search from '@d0ssant0s/quire/vue/Search.vue';
+import { pagefindSource } from '@d0ssant0s/quire/search';
+const source = pagefindSource('/pagefind/', { filter: 'kind' });
+</script>
+<template><Search :source="source" /></template>
+`,
+    },
   });
   const withoutVue = site('without-vue', {
     config: 'quire()',
@@ -94,6 +110,7 @@ import '../styles/site.css';
   else {
     const html = readFileSync(join(withVue, 'dist/index.html'), 'utf8');
     if (!html.includes('<astro-island')) fail('quire({ vue: true }): the page has no hydrated Search island');
+    if (!html.includes('component-url="/_astro/Indexed.')) fail('quire({ vue: true }): the page has no island for the site component that passes a pagefindSource');
     if (files(withVue, '.js').length === 0) fail('quire({ vue: true }): the build emitted no script for the island');
   }
 

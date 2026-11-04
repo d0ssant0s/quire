@@ -1,7 +1,8 @@
 // Check the built example in a real browser: both themes and the system scheme,
 // highlighted code, the page shell at desktop and phone widths, the sidebar and
-// contents tree, a table that scrolls in its frame, a targeted source line and
-// reduced motion.
+// contents tree, a table that scrolls in its frame, a targeted source line,
+// reduced motion and the search: against a stand-in endpoint, a stand-in source
+// function and the example's own Pagefind index.
 //
 // CHROMIUM names a Chromium binary to use; without it Playwright uses its own,
 // which `npx playwright install chromium` downloads.
@@ -11,7 +12,7 @@ import { extname, join } from 'node:path';
 import { chromium } from 'playwright';
 
 const site = new URL('../examples/basic/dist/', import.meta.url).pathname;
-const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript' };
+const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json' };
 // A stand-in search endpoint: "fail" answers 500, a query starting "slow"
 // answers late, and anything else matches titles and excerpts.
 const documents = [
@@ -238,29 +239,31 @@ expect('the label collapses the panel', await outline.isVisible('#quire-contents
 expect('the collapsed panel says so', await outline.getAttribute('[data-quire-contents-panel]', 'aria-expanded'), 'false');
 await outline.close();
 
-// Search: Ctrl+K opens the dialog with the input focused; results come from the
-// endpoint and the keyboard opens one; a later query replaces a slower one;
-// an empty answer and a failing endpoint say so; Escape returns focus.
+// Search against an endpoint: Ctrl+K opens the dialog with the input focused;
+// results come from the endpoint and the keyboard opens one; a later query
+// replaces a slower one; an empty answer and a failing endpoint say so; Escape
+// returns focus.
 const finder = await open({ width: 1280 });
 await finder.waitForFunction(() => document.querySelector('[data-quire-search]') && !document.querySelector('astro-island[ssr]'));
 await finder.keyboard.press('Control+K');
 await finder.waitForSelector('[role=dialog]');
 expect('Ctrl+K focuses the search input', await finder.evaluate(() => document.activeElement?.tagName), 'INPUT');
-const options = () => finder.$$eval('[role=dialog] [role=option]', (items) => items.map((item) => item.textContent.trim()));
+const options = (page) => page.$$eval('[role=dialog] [role=option]', (items) => items.map((item) => item.textContent.trim()));
+const status = (page) => page.$eval('[role=dialog] [role=status]', (element) => element.textContent.trim());
+const said = (page, text) => page.waitForFunction((wanted) => document.querySelector('[role=dialog] [role=status]')?.textContent.trim() === wanted, text);
 await finder.keyboard.type('scrol');
 await finder.waitForSelector('[role=dialog] [role=option]');
-expect('search lists the endpoint results', (await options()).join('|'), 'TablesGuide · Tables scroll in their frame');
+expect('search lists the endpoint results', (await options(finder)).join('|'), 'TablesGuide · Tables scroll in their frame');
 // Each query replaces the last in one step, as a paste does, so no shorter
 // query in between cancels the slow request first.
 await finder.fill('[role=dialog] input', 'slowx');
 await finder.waitForTimeout(250);
 await finder.fill('[role=dialog] input', 'home');
 await finder.waitForTimeout(900);
-expect('a later query replaces a slower earlier one', (await options()).join('|'), 'HomeThe example site');
+expect('a later query replaces a slower earlier one', (await options(finder)).join('|'), 'HomeThe example site');
 await finder.keyboard.press('Control+A');
 await finder.keyboard.type('zzz');
-await finder.waitForSelector('[role=dialog] [role=status]');
-expect('an empty answer says so', await finder.textContent('[role=dialog] [role=status]'), 'No results for “zzz”.');
+await said(finder, 'No results for “zzz”.');
 await finder.keyboard.press('Control+A');
 await finder.keyboard.type('fail');
 await finder.waitForSelector('[role=dialog] [role=alert]');
@@ -276,31 +279,156 @@ await Promise.all([finder.waitForURL(`${base}/`), finder.keyboard.press('Enter')
 expect('Enter opens the chosen result', new URL(finder.url()).pathname, '/');
 await finder.close();
 
+// Search against a source function that stands in for a service. It counts
+// results by category, can be slow, can throw, and can answer a plain list.
+const standIn = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+await standIn.goto(`${base}/standin/`);
+await standIn.waitForFunction(() => document.querySelector('[data-quire-search]') && !document.querySelector('astro-island[ssr]'));
+const asked = () => standIn.evaluate(() => window.quireStandIn.calls.map((call) => ({ ...call })));
+const steer = (settings) => standIn.evaluate((values) => Object.assign(window.quireStandIn, values), settings);
+const chips = () => standIn.$$eval('[role=dialog] [data-quire-search-filters] button', (buttons) => buttons.map((button) => `${button.textContent.replace(/\s+/g, ' ').trim()}${button.getAttribute('aria-pressed') === 'true' ? '*' : ''}`).join('|'));
+const field = '[role=dialog] input';
+await standIn.keyboard.press('Control+K');
+await standIn.waitForSelector('[role=dialog]');
+expect('the search input is named', await standIn.getAttribute(field, 'aria-label'), 'Search');
+await said(standIn, 'Type at least 2 characters.');
+await standIn.fill(field, 'page');
+await standIn.waitForSelector('[role=dialog] [role=option]');
+expect('a source lists its results, without the malformed ones', (await options(standIn)).join('|'), 'HomeThe example page|Reading stylesLists, code and tables on a page|Short noteA page without headings');
+expect('the filters carry the counts the source gave', await chips(), 'All 3*|Pages 2|Reading 1');
+expect('the results are announced', await status(standIn), '3 results.');
+// Selection: the arrow keys move the highlight, and the field names it.
+await standIn.keyboard.press('ArrowDown');
+await standIn.keyboard.press('ArrowDown');
+const highlighted = await standIn.evaluate(() => {
+  const target = document.getElementById(document.querySelector('[role=dialog] input').getAttribute('aria-activedescendant') ?? '');
+  return target ? `${target.getAttribute('role')}:${target.hasAttribute('data-highlighted')}:${target.textContent.trim()}` : null;
+});
+expect('the field names the highlighted result', highlighted, 'option:true:Reading stylesLists, code and tables on a page');
+expect('the results are a named listbox', await standIn.getAttribute('[role=dialog] [role=listbox]', 'aria-label'), 'Search results');
+// A filter narrows the search and keeps its counts.
+await standIn.click('[role=dialog] [data-quire-search-filters] button:has-text("Reading")');
+await said(standIn, '1 result in Reading.');
+expect('the chosen filter narrows the results', (await options(standIn)).join('|'), 'Reading stylesLists, code and tables on a page');
+expect('the chosen filter is pressed and counts stay', await chips(), 'All 3|Pages 2|Reading 1*');
+expect('a click on a filter returns to the field', await standIn.evaluate(() => document.activeElement?.tagName), 'INPUT');
+expect('the source was asked for the filter', (await asked()).at(-1).filter, 'Reading');
+// A failure offers a retry that keeps the query and the filter.
+await steer({ fail: true });
+await standIn.fill(field, 'pag');
+await standIn.waitForSelector('[role=dialog] [role=alert]');
+expect('a thrown error is the failed state', await standIn.textContent('[role=dialog] [role=alert]'), 'Search is unavailable.Retry');
+expect('the failed state leaves no results', (await options(standIn)).length, 0);
+await steer({ fail: false });
+const before = (await asked()).length;
+await standIn.click('[role=dialog] [role=alert] button');
+await standIn.waitForSelector('[role=dialog] [role=option]');
+expect('the retry asks again', (await asked()).length, before + 1);
+expect('the retry keeps the query', (await asked()).at(-1).query, 'pag');
+expect('the retry keeps the filter', (await asked()).at(-1).filter, 'Reading');
+expect('the field still holds the query', await standIn.inputValue(field), 'pag');
+expect('the retry shows the filtered results', (await options(standIn)).join('|'), 'Reading stylesLists, code and tables on a page');
+expect('the filter is still chosen after the retry', await chips(), 'All 3|Pages 2|Reading 1*');
+// A filter chosen alone leaves "All" to clear it.
+await standIn.click('[role=dialog] [data-quire-search-filters] button:has-text("All")');
+await said(standIn, '3 results.');
+// Waiting is announced and shown; a slow answer a newer query supersedes is
+// cancelled, and dropped even though the source ignores the cancellation.
+await standIn.fill(field, 'slowx');
+await said(standIn, 'Searching…');
+expect('waiting marks the field busy', await standIn.getAttribute(field, 'aria-busy'), 'true');
+await standIn.waitForTimeout(250);
+await standIn.fill(field, 'home');
+await standIn.waitForSelector('[role=dialog] [role=option]');
+await standIn.waitForTimeout(900);
+expect('a later query replaces a slower earlier one, from a source', (await options(standIn)).join('|'), 'HomeThe example page');
+expect('the superseded call was cancelled', (await asked()).find((call) => call.query === 'slowx').aborted, true);
+// Clearing the query cancels what is in flight, and its answer never returns.
+await standIn.fill(field, 'slowy');
+await standIn.waitForTimeout(250);
+await standIn.fill(field, '');
+await standIn.waitForTimeout(900);
+expect('a cleared query is not refilled by a late answer', (await options(standIn)).length, 0);
+expect('a cleared query is idle', await status(standIn), 'Type at least 2 characters.');
+expect('the cleared query cancelled its call', (await asked()).find((call) => call.query === 'slowy').aborted, true);
+// A source that answers a plain list gets its filters counted by quire, which
+// also hides the results of another category.
+await steer({ bare: true });
+await standIn.fill(field, 'page');
+await standIn.waitForSelector('[role=dialog] [role=option]');
+expect('filters are counted from a plain list', await chips(), 'All 3*|Pages 2|Reading 1');
+await standIn.click('[role=dialog] [data-quire-search-filters] button:has-text("Pages")');
+await said(standIn, '2 results in Pages.');
+expect('quire hides the results of other categories', (await options(standIn)).join('|'), 'HomeThe example page|Short noteA page without headings');
+await standIn.close();
+
+// Search over the example's own Pagefind index, through pagefindSource: the
+// script loads when the first query runs and not before, excerpts arrive as
+// text, the category filter has Pagefind's counts, and a script that failed to
+// load is fetched again by the retry.
+const indexed = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+const requested = [];
+indexed.on('request', (request) => requested.push(new URL(request.url()).pathname));
+await indexed.goto(`${base}/indexed/`);
+await indexed.waitForFunction(() => document.querySelector('[data-quire-search]') && !document.querySelector('astro-island[ssr]'));
+await indexed.keyboard.press('Control+K');
+await indexed.waitForSelector('[role=dialog]');
+expect('Pagefind is not fetched before a query', requested.some((path) => path.startsWith('/pagefind/')), false);
+await indexed.route('**/pagefind/pagefind.js', (route) => route.abort());
+await indexed.keyboard.type('page');
+await indexed.waitForSelector('[role=dialog] [role=alert]');
+expect('an index that does not load is the failed state', await indexed.textContent('[role=dialog] [role=alert]'), 'Search is unavailable.Retry');
+await indexed.unroute('**/pagefind/pagefind.js');
+await indexed.click('[role=dialog] [role=alert] button');
+await indexed.waitForSelector('[role=dialog] [role=option]');
+expect('Pagefind excerpts arrive as text, not markup', (await options(indexed)).some((text) => /[<>]/.test(text)), false);
+const found = await indexed.$$eval('[role=dialog] [role=option]', (items) => items.map((item) => item.querySelector('span').textContent).sort().join('|'));
+expect('Pagefind finds the pages with the word', found, 'Reading styles|Short note');
+const filterRow = async () => indexed.$$eval('[role=dialog] [data-quire-search-filters] button', (buttons) => buttons.map((button) => `${button.textContent.replace(/\s+/g, ' ').trim()}${button.getAttribute('aria-pressed') === 'true' ? '*' : ''}`).join('|'));
+expect('the Pagefind filter has its counts', await filterRow(), 'All 2*|Reading 1|Short pages 1');
+await indexed.click('[role=dialog] [data-quire-search-filters] button:has-text("Short pages")');
+await said(indexed, '1 result in Short pages.');
+expect('the Pagefind filter narrows the search', (await options(indexed)).join('|').startsWith('Short note'), true);
+expect('the Pagefind filter keeps every count', await filterRow(), 'All 2|Reading 1|Short pages 1*');
+await indexed.keyboard.press('ArrowDown');
+await Promise.all([indexed.waitForURL(`${base}/note/`), indexed.keyboard.press('Enter')]);
+await indexed.close();
+
 // What a reader downloads: the page's scripts, compressed, before and after
 // the search is first used. The budget catches a framework or kit grown by
-// accident; the figures are printed for comparison.
+// accident; the figures are printed for comparison. The page that searches
+// with Pagefind also loads Pagefind's own scripts when the first query runs.
+// They belong to the site's search engine, not to quire, so they are counted
+// apart, under a budget of their own that notices an engine that grows.
 const { gzipSync } = await import('node:zlib');
-const weigh = async (use) => {
+const weigh = async (path, query) => {
   const page = await browser.newPage();
   const sizes = new Map();
   page.on('response', async (response) => {
     if (response.request().resourceType() !== 'script') return;
-    sizes.set(response.url(), gzipSync(await response.body()).length);
+    sizes.set(new URL(response.url()).pathname, gzipSync(await response.body()).length);
   });
-  await page.goto(`${base}/guide/`);
+  await page.goto(`${base}${path}`);
   await page.waitForFunction(() => !document.querySelector('astro-island[ssr]'));
-  if (use) {
+  await page.waitForLoadState('networkidle');
+  const total = (own) => [...sizes].filter(([path]) => path.startsWith('/pagefind/') !== own).reduce((sum, [, size]) => sum + size, 0);
+  const loaded = total(true);
+  if (query) {
     await page.keyboard.press('Control+K');
-    await page.keyboard.type('tables');
+    await page.keyboard.type(query);
     await page.waitForSelector('[role=dialog] [role=option]');
   }
   await page.waitForLoadState('networkidle');
   await page.close();
-  return [...sizes.values()].reduce((sum, size) => sum + size, 0);
+  return { loaded, used: total(true), engine: total(false) };
 };
-const [loaded, used] = [await weigh(false), await weigh(true)];
-console.log(`check-browser: scripts ${(loaded / 1024).toFixed(1)} kB gzip on load, ${(used / 1024).toFixed(1)} kB after a search`);
-if (used > 80 * 1024) problems.push(`the page downloads ${(used / 1024).toFixed(1)} kB of compressed scripts, over the 80 kB budget`);
+const kB = (bytes) => `${(bytes / 1024).toFixed(1)} kB`;
+for (const [label, path, query] of [['endpoint', '/guide/', 'tables'], ['Pagefind source', '/indexed/', 'page']]) {
+  const { loaded, used, engine } = await weigh(path, query);
+  console.log(`check-browser: ${label} page: quire's scripts ${kB(loaded)} gzip on load, ${kB(used)} after a search${engine ? `, plus Pagefind's ${kB(engine)}` : ''}`);
+  if (used > 80 * 1024) problems.push(`the ${label} page downloads ${kB(used)} of compressed scripts, over the 80 kB budget`);
+  if (engine > 32 * 1024) problems.push(`the ${label} page downloads ${kB(engine)} of Pagefind's compressed scripts, over the 32 kB budget`);
+}
 
 await browser.close();
 server.close();
@@ -308,4 +436,4 @@ if (problems.length) {
   for (const problem of problems) console.error(`check-browser: ${problem}`);
   process.exit(1);
 }
-console.log('check-browser: themes, code, shell, menu, theme switch, sidebar, contents tree, search, tables and source lines ok');
+console.log('check-browser: themes, code, shell, menu, theme switch, sidebar, contents tree, search (endpoint, source and Pagefind), tables and source lines ok');
