@@ -1,3 +1,4 @@
+import vueIntegration from '@astrojs/vue';
 import tailwindcss from '@tailwindcss/vite';
 import type { AstroIntegration } from 'astro';
 
@@ -19,9 +20,14 @@ export default function quire(options: QuireOptions = {}): AstroIntegration {
   return {
     name: '@d0ssant0s/quire',
     hooks: {
-      'astro:config:setup': async ({ updateConfig }) => {
-        // Loaded only when asked for, so a site without Vue never loads it.
-        const integrations = options.vue ? [(await import('@astrojs/vue')).default()] : [];
+      'astro:config:setup': ({ updateConfig }) => {
+        // @astrojs/vue is imported with this module, never from inside the hook:
+        // quire is TypeScript source, so from node_modules Astro loads it
+        // through a Vite module runner that is closed by the time this hook
+        // runs, and a dynamic import here fails. Importing the module costs a
+        // site without Vue nothing in its pages; the integration, which adds
+        // Vue to the build, is added only when the option is set.
+        const integrations = options.vue ? [vueIntegration()] : [];
         updateConfig({
           integrations,
           vite: { plugins: [tailwindcss()] },

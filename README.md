@@ -136,7 +136,9 @@ import Search from '@d0ssant0s/quire/vue/Search.vue';
 </Header>
 ```
 
-Without the option, a site has no Vue in its build and its pages ship none.
+quire imports `@astrojs/vue` either way, but adds the integration only when
+the option is set. Without it, a site has no Vue in its build and its pages
+ship none.
 
 A component that reads live data takes an endpoint URL and shows waiting,
 empty and failed states. An Astro page can pass a hydrated component only
