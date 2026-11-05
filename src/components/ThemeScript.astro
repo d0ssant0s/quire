@@ -1,8 +1,8 @@
 ---
-// Restores the reader's theme and sidebar choice before first paint, so neither
-// flashes. Place it in the page's <head>; `storage` must match the Header's.
+// Restores the reader's theme, sidebar choice and sidebar width before first
+// paint, so none of them flashes. Place it in the page's <head>; `storage` must match the Header's.
 interface Props {
-  /** Prefix of the localStorage keys, `<storage>-theme` and `<storage>-sidebar`. */
+  /** Prefix of the localStorage keys, `<storage>-theme`, `<storage>-sidebar` and `<storage>-sidebar-width`. */
   storage?: string;
 }
 const { storage = 'quire' } = Astro.props;
@@ -13,6 +13,10 @@ const { storage = 'quire' } = Astro.props;
     const theme = localStorage.getItem(`${storage}-theme`);
     if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
     if (localStorage.getItem(`${storage}-sidebar`) === 'collapsed') document.documentElement.setAttribute('data-sidebar-collapsed', '');
+    // Page's resize handle writes the width; the clamp keeps it within Page's
+    // bounds however the window has changed since.
+    const width = Number(localStorage.getItem(`${storage}-sidebar-width`));
+    if (width > 0) document.documentElement.style.setProperty('--quire-sidebar-width', `clamp(208px, ${width}px, max(208px, 100vw - 640px))`);
   } catch {
     // Storage can be unavailable, as for a file opened from disk in some browsers.
   }

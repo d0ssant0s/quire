@@ -89,11 +89,11 @@ import ThemeScript from '@d0ssant0s/quire/components/ThemeScript.astro';
 
 | Component | What it does |
 | --- | --- |
-| `ThemeScript` | Restores the reader's theme and collapsed sidebar before first paint; put it in `<head>` |
+| `ThemeScript` | Restores the reader's theme, collapsed sidebar and sidebar width before first paint; put it in `<head>` |
 | `Header` | The sticky header: a menu button when `menu` is set, the default slot for the site's name and links, an `end` slot for controls such as search, and the theme switch. It starts with a skip link to `<main>`, the first stop for a keyboard (`skip` sets its text, `false` drops it; `skipTo` names the target id, default `quire-main`) |
 | `SkipLink` | The skip link on its own (`text`, `target`), for a site without `Header`; put it first in `<body>` |
 | `ThemeSwitch` | Steps through the system scheme, light and dark, and remembers a pinned choice; the header includes it |
-| `Page` | The grid: a `sidebar` slot, the article, and a `rail` slot that appears once there is room; `wide` gives the article the whole width. `main` passes attributes to `<main>`, whose id defaults to `quire-main`. A `Header` in the `header` slot is framed, and a `brand` slot heads the sidebar; see below |
+| `Page` | The grid: a `sidebar` slot, the article, and a `rail` slot that appears once there is room; `wide` gives the article the whole width. `main` passes attributes to `<main>`, whose id defaults to `quire-main`; `storage` is the prefix of the sidebar width's key. A `Header` in the `header` slot is framed, and a `brand` slot heads the sidebar; see below |
 | `Sidebar` | Section navigation from a tree of `NavItem` links and groups, marking the current page and scrolling it into view; groups the reader opens or closes stay so for the browser session |
 | `Contents` | The page's headings, from Astro's Markdown headings, marking the one being read; `tree` nests them in branches that open as the reader reaches them, for long pages |
 | `NarrowContents` | The same headings in a compact disclosure for the top of the article, shown only below the width where the rail appears; a choice or Escape closes it. Give it the rail's `minDepth` and `maxDepth` |
@@ -121,9 +121,18 @@ it. A `Header` placed before `Page` instead spans the window above the shell.
 The header draws no bottom edge in either case: the page beneath it has the
 same background.
 
+On a desktop the menu button shows a panel icon that closes the sidebar, or
+opens it once collapsed; Ctrl+B, or Cmd+B on a Mac, presses it except while
+typing in a field. A handle on the sidebar's edge resizes it: drag it, or focus
+it and use the arrow keys (Shift for bigger steps), Home and End. The width
+stays between 208px and what leaves the article 640px, also as the window
+narrows. A double-click or Enter restores the standard width. The handle is a
+focusable separator that reports the width to assistive technology.
+
 `ThemeScript`, `Header`, `ThemeSwitch` and `Sidebar` take a `storage` prefix
 for their browser storage keys, `<storage>-theme`, `<storage>-sidebar` and
-`<storage>-nav-groups`; the default is `quire`. The menu button, the theme
+`<storage>-nav-groups`, and `Page` for `<storage>-sidebar-width`; the default
+is `quire`. The menu button, the theme
 switch and the navigation's scripts are small scripts in their components and
 need no framework.
 

@@ -14,6 +14,11 @@
 // there, and the header's own `data-quire-brand` element steps aside while
 // the sidebar shows; a collapsed sidebar gives the header both back. A Header
 // placed before Page instead spans the window above the shell.
+//
+// On a desktop a handle on the sidebar's edge resizes it: dragged, or with the
+// arrow keys once focused, between 208px and what leaves the article 640px.
+// A double-click or Enter returns it to its standard width. The width is kept
+// under `<storage>-sidebar-width`, which ThemeScript restores before paint.
 import type { HTMLAttributes } from 'astro/types';
 
 interface Props {
@@ -22,8 +27,10 @@ interface Props {
   class?: string;
   /** Attributes for the <main> element, such as a search indexer's markers. */
   main?: HTMLAttributes<'main'>;
+  /** Prefix of the localStorage keys; must match ThemeScript's. */
+  storage?: string;
 }
-const { wide = false, class: className, main = {} } = Astro.props;
+const { wide = false, class: className, main = {}, storage = 'quire' } = Astro.props;
 // The main prop's class joins quire's own; spread as it is, it would be a
 // second class attribute, and the browser keeps only the first.
 const { class: mainClass, id: mainId = 'quire-main', ...mainAttributes } = main;
@@ -55,7 +62,9 @@ const drawer = [
   'motion-safe:[transition:translate_180ms,visibility_0s_180ms]',
   'sidebar-open:visible sidebar-open:translate-x-0 sidebar-open:shadow-xl motion-safe:sidebar-open:[transition:translate_180ms]',
 ];
-const column = 'lg:visible lg:sticky lg:z-auto lg:w-auto lg:translate-x-0 lg:border-r lg:border-line lg:transition-none lg:sidebar-open:shadow-none lg:sidebar-collapsed:hidden';
+// The sidebar and its resize handle share the first cell, so the handle sits on
+// the sidebar's edge.
+const column = 'lg:col-start-1 lg:row-start-1 lg:visible lg:sticky lg:z-auto lg:w-auto lg:translate-x-0 lg:border-r lg:border-line lg:transition-none lg:sidebar-open:shadow-none lg:sidebar-collapsed:hidden';
 ---
 
 <div data-quire-frame={framed ? frame : undefined} class="contents">
@@ -73,6 +82,21 @@ const column = 'lg:visible lg:sticky lg:z-auto lg:w-auto lg:translate-x-0 lg:bor
         <Fragment set:html={sidebarHtml} />
       </div>
     )}
+    {sidebar && (
+      <div
+        data-quire-resize
+        data-quire-storage={storage}
+        role="separator"
+        aria-orientation="vertical"
+        aria-controls="quire-sidebar"
+        aria-label="Resize navigation"
+        tabindex="0"
+        class:list={[
+          'group sticky top-(--quire-header) z-40 hidden h-[calc(100vh-var(--quire-header))] w-2 translate-x-1/2 cursor-col-resize touch-none justify-self-end focus:outline-none lg:col-start-1 lg:row-start-1 lg:block lg:sidebar-collapsed:hidden',
+          framed && fullHeight,
+        ]}
+      ><span class="absolute inset-y-0 left-1/2 w-[2px] -translate-x-1/2 group-hover:bg-line-strong group-focus-visible:bg-accent group-data-dragging:bg-accent"></span></div>
+    )}
     {sidebar && <div data-quire-scrim class="fixed inset-x-0 top-(--quire-header) bottom-0 z-24 hidden bg-black/30 sidebar-open:block lg:sidebar-open:hidden"></div>}
     <main
       {...mainAttributes}
@@ -84,3 +108,73 @@ const column = 'lg:visible lg:sticky lg:z-auto lg:w-auto lg:translate-x-0 lg:bor
     {rail && <div data-quire-rail class:list={[side, 'sticky hidden p-[12px] xl:block']}><Fragment set:html={railHtml} /></div>}
   </div>
 </div>
+
+<script>
+  // The handle sets --quire-sidebar-width on the root, which the grid, the
+  // framed header and ThemeScript all read. The CSS clamp keeps the width in
+  // bounds as the window changes; the script clamps only what it reports.
+  const root = document.documentElement;
+  const handle = document.querySelector<HTMLElement>('[data-quire-resize]');
+  const sidebar = document.getElementById('quire-sidebar');
+  if (handle && sidebar) {
+    const key = `${handle.dataset.quireStorage}-sidebar-width`;
+    const least = 208;
+    const most = () => Math.max(least, innerWidth - 640);
+    const clamp = (width: number) => Math.round(Math.min(most(), Math.max(least, width)));
+    const width = () => Math.round(sidebar.getBoundingClientRect().width);
+    const report = () => {
+      handle.setAttribute('aria-valuemin', String(least));
+      handle.setAttribute('aria-valuemax', String(most()));
+      handle.setAttribute('aria-valuenow', String(width()));
+    };
+    const set = (value: number) => root.style.setProperty('--quire-sidebar-width', `clamp(${least}px, ${value}px, max(${least}px, 100vw - 640px))`);
+    const keep = () => {
+      try {
+        localStorage.setItem(key, String(width()));
+      } catch {
+        // The width then lasts only for this page.
+      }
+      report();
+    };
+    const reset = () => {
+      root.style.removeProperty('--quire-sidebar-width');
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        // Nothing was kept.
+      }
+      report();
+    };
+
+    handle.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      // No text selection while dragging.
+      event.preventDefault();
+      handle.setPointerCapture(event.pointerId);
+      handle.dataset.dragging = '';
+      const start = event.clientX;
+      const from = width();
+      const move = (moved: PointerEvent) => set(clamp(from + moved.clientX - start));
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('lostpointercapture', () => {
+        handle.removeEventListener('pointermove', move);
+        delete handle.dataset.dragging;
+        if (width() !== from) keep();
+      }, { once: true });
+    });
+    handle.addEventListener('dblclick', reset);
+    handle.addEventListener('keydown', (event) => {
+      const step = event.shiftKey ? 64 : 16;
+      const to = { ArrowLeft: width() - step, ArrowRight: width() + step, Home: least, End: most() }[event.key];
+      if (event.key === 'Enter') reset();
+      else if (to === undefined) return;
+      else {
+        set(clamp(to));
+        keep();
+      }
+      event.preventDefault();
+    });
+    addEventListener('resize', report);
+    report();
+  }
+</script>
