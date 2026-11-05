@@ -7,6 +7,13 @@
 // rail appears once there is room for it. <main> has an id (`quire-main`
 // unless `main.id` says otherwise) for Header's skip link, and takes focus
 // without a ring.
+//
+// A Header in the `header` slot is framed: on a desktop the sidebar runs the
+// window's full height on its own surface and the header starts at its edge,
+// as two panes. The `brand` slot, usually the site's name, heads the sidebar
+// there, and the header's own `data-quire-brand` element steps aside while
+// the sidebar shows; a collapsed sidebar gives the header both back. A Header
+// placed before Page instead spans the window above the shell.
 import type { HTMLAttributes } from 'astro/types';
 
 interface Props {
@@ -27,40 +34,53 @@ const sidebarHtml = await filled('sidebar');
 const railHtml = wide ? '' : await filled('rail');
 const sidebar = sidebarHtml !== '';
 const rail = railHtml !== '';
+const framed = Astro.slots.has('header');
+const brand = framed && sidebar && Astro.slots.has('brand');
+const frame = [sidebar && 'sidebar', brand && 'brand'].filter(Boolean).join(' ');
 const columns = sidebar
   ? rail
-    ? 'lg:grid-cols-[256px_minmax(0,1fr)] xl:grid-cols-[256px_minmax(0,1fr)_248px] lg:sidebar-collapsed:grid-cols-[minmax(0,1fr)] xl:sidebar-collapsed:grid-cols-[minmax(0,1fr)_248px]'
-    : 'lg:grid-cols-[256px_minmax(0,1fr)] lg:sidebar-collapsed:grid-cols-[minmax(0,1fr)]'
+    ? 'lg:grid-cols-[var(--quire-sidebar-width)_minmax(0,1fr)] xl:grid-cols-[var(--quire-sidebar-width)_minmax(0,1fr)_248px] lg:sidebar-collapsed:grid-cols-[minmax(0,1fr)] xl:sidebar-collapsed:grid-cols-[minmax(0,1fr)_248px]'
+    : 'lg:grid-cols-[var(--quire-sidebar-width)_minmax(0,1fr)] lg:sidebar-collapsed:grid-cols-[minmax(0,1fr)]'
   : rail
     ? 'xl:grid-cols-[minmax(0,1fr)_248px]'
     : '';
 const side = 'top-(--quire-header) h-[calc(100vh-var(--quire-header))] overflow-y-auto';
+// Framed, the desktop sidebar rises into the header's row and fills the window.
+const fullHeight = 'lg:top-0 lg:-mt-(--quire-header) lg:h-screen';
 // Below lg the sidebar slides over the page. Closed, it is hidden as well as
 // moved away, so its links leave the tab order; the hiding waits for the slide
 // out to finish, and showing it is immediate so focus can move straight in.
 const drawer = [
-  'fixed left-0 z-25 w-[min(300px,86vw)] -translate-x-full invisible bg-bg',
+  'fixed left-0 z-25 w-[min(300px,86vw)] -translate-x-full invisible bg-sidebar',
   'motion-safe:[transition:translate_180ms,visibility_0s_180ms]',
   'sidebar-open:visible sidebar-open:translate-x-0 sidebar-open:shadow-xl motion-safe:sidebar-open:[transition:translate_180ms]',
 ];
-const column = 'lg:visible lg:sticky lg:z-auto lg:w-auto lg:translate-x-0 lg:transition-none lg:sidebar-open:shadow-none lg:sidebar-collapsed:hidden';
+const column = 'lg:visible lg:sticky lg:z-auto lg:w-auto lg:translate-x-0 lg:border-r lg:border-line lg:transition-none lg:sidebar-open:shadow-none lg:sidebar-collapsed:hidden';
 ---
 
-<div data-quire-shell class:list={['grid grid-cols-[minmax(0,1fr)]', columns, className]}>
-  {sidebar && (
-    <div
-      id="quire-sidebar"
-      data-quire-sidebar
-      class:list={[side, drawer, column]}
-    ><Fragment set:html={sidebarHtml} /></div>
-  )}
-  {sidebar && <div data-quire-scrim class="fixed inset-x-0 top-(--quire-header) bottom-0 z-24 hidden bg-black/30 sidebar-open:block lg:sidebar-open:hidden"></div>}
-  <main
-    {...mainAttributes}
-    id={mainId}
-    tabindex="-1"
-    data-quire-main
-    class:list={['w-full min-w-0 justify-self-center px-5 pt-7 pb-24 focus:outline-none md:px-12', wide ? 'max-w-none' : 'max-w-[980px]', mainClass]}
-  ><slot /></main>
-  {rail && <div data-quire-rail class:list={[side, 'sticky hidden p-[12px] xl:block']}><Fragment set:html={railHtml} /></div>}
+<div data-quire-frame={framed ? frame : undefined} class="contents">
+  {framed && <slot name="header" />}
+  <div data-quire-shell class:list={['grid grid-cols-[minmax(0,1fr)]', columns, className]}>
+    {sidebar && (
+      <div
+        id="quire-sidebar"
+        data-quire-sidebar
+        class:list={[side, drawer, column, framed && fullHeight]}
+      >
+        {brand && (
+          <div data-quire-sidebar-brand class="sticky top-0 z-1 hidden h-(--quire-header) items-center gap-2 bg-sidebar px-[20px] lg:flex"><slot name="brand" /></div>
+        )}
+        <Fragment set:html={sidebarHtml} />
+      </div>
+    )}
+    {sidebar && <div data-quire-scrim class="fixed inset-x-0 top-(--quire-header) bottom-0 z-24 hidden bg-black/30 sidebar-open:block lg:sidebar-open:hidden"></div>}
+    <main
+      {...mainAttributes}
+      id={mainId}
+      tabindex="-1"
+      data-quire-main
+      class:list={['w-full min-w-0 justify-self-center px-5 pt-7 pb-24 focus:outline-none md:px-12', wide ? 'max-w-none' : 'max-w-[980px]', mainClass]}
+    ><slot /></main>
+    {rail && <div data-quire-rail class:list={[side, 'sticky hidden p-[12px] xl:block']}><Fragment set:html={railHtml} /></div>}
+  </div>
 </div>

@@ -31,11 +31,13 @@ const sections: NavItem[] = [
     <ThemeScript />
   </head>
   <body class="min-h-screen bg-bg text-fg">
-    <Header menu>
-      <a href="/" class="font-semibold">quire example</a>
-      <Search slot="end" client:idle endpoint="/api/search" />
-    </Header>
-    <Page class="mx-auto max-w-[1480px]" main={{ class: 'example-main' }}>
+    <!-- Framed: the header sits beside a full-height sidebar headed by the name. -->
+    <Page main={{ class: 'example-main' }}>
+      <Header slot="header" menu>
+        <a href="/" data-quire-brand class="font-semibold">quire example</a>
+        <Search slot="end" client:idle endpoint="/api/search" />
+      </Header>
+      <a slot="brand" href="/" class="font-semibold">quire example</a>
       <Sidebar slot="sidebar" items={sections} current={Astro.url.pathname} />
       <!-- Pagefind indexes this body alone: the title, the kind it filters by, and the article. -->
       <div data-pagefind-body>
