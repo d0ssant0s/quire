@@ -24,8 +24,8 @@ const sidebar = sidebarHtml !== '';
 const rail = railHtml !== '';
 const columns = sidebar
   ? rail
-    ? 'lg:grid-cols-[264px_minmax(0,1fr)] xl:grid-cols-[264px_minmax(0,1fr)_248px] lg:sidebar-collapsed:grid-cols-[minmax(0,1fr)] xl:sidebar-collapsed:grid-cols-[minmax(0,1fr)_248px]'
-    : 'lg:grid-cols-[264px_minmax(0,1fr)] lg:sidebar-collapsed:grid-cols-[minmax(0,1fr)]'
+    ? 'lg:grid-cols-[256px_minmax(0,1fr)] xl:grid-cols-[256px_minmax(0,1fr)_248px] lg:sidebar-collapsed:grid-cols-[minmax(0,1fr)] xl:sidebar-collapsed:grid-cols-[minmax(0,1fr)_248px]'
+    : 'lg:grid-cols-[256px_minmax(0,1fr)] lg:sidebar-collapsed:grid-cols-[minmax(0,1fr)]'
   : rail
     ? 'xl:grid-cols-[minmax(0,1fr)_248px]'
     : '';
@@ -50,5 +50,5 @@ const side = 'top-(--quire-header) h-[calc(100vh-var(--quire-header))] overflow-
     data-quire-main
     class:list={['w-full min-w-0 justify-self-center px-5 pt-7 pb-24 md:px-12', wide ? 'max-w-none' : 'max-w-[980px]', main.class]}
   ><slot /></main>
-  {rail && <div data-quire-rail class:list={[side, 'sticky hidden xl:block']}><Fragment set:html={railHtml} /></div>}
+  {rail && <div data-quire-rail class:list={[side, 'sticky hidden p-[12px] xl:block']}><Fragment set:html={railHtml} /></div>}
 </div>

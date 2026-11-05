@@ -93,10 +93,16 @@ import ThemeScript from '@d0ssant0s/quire/components/ThemeScript.astro';
 | `Sidebar` | Section navigation from a tree of `NavItem` links and groups, marking the current page and scrolling it into view; groups the reader opens or closes stay so for the browser session |
 | `Contents` | The page's headings, from Astro's Markdown headings, marking the one being read; `tree` nests them in branches that open as the reader reaches them, for long pages |
 
-A `NavItem`, and the `Sidebar` label through its `icon` prop, can carry an
-icon: the markup of one `<svg>` element, drawn before the label in the text's
-colour. quire ships no icon set, and the markup is inserted as written, so it
-must come from the site's build.
+A group `NavItem`, and the `Sidebar` label through its `icon` prop, can carry
+an icon: the markup of one `<svg>` element, drawn before the label in the
+text's colour. Page links draw no icon; they start where the group labels'
+text starts. quire ships no icon set, and the markup is inserted as written, so
+it must come from the site's build.
+
+The sidebar and the contents rail share one row style: one line of 14px text
+in a 32 px row. A title too long for its row ends in an ellipsis and stays
+whole in the link's `title` and accessible name. The rail's contents sit in a
+card.
 
 `ThemeScript`, `Header`, `ThemeSwitch` and `Sidebar` take a `storage` prefix
 for their browser storage keys, `<storage>-theme`, `<storage>-sidebar` and

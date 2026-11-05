@@ -11,14 +11,14 @@ import '../styles/site.css';
 
 interface Props { frontmatter: { title: string; kind?: string }; headings: MarkdownHeading[] }
 const { frontmatter, headings } = Astro.props;
-// Icons are the site's own SVG markup; quire ships none.
+// Icons are the site's own SVG markup; quire ships none, and draws them on groups.
 const svg = (path: string) => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>`;
 // A long group above the current page, so the sidebar has to scroll to it.
 const topics: NavItem[] = Array.from({ length: 30 }, (_, index) => ({ label: `Topic ${index + 1}`, href: `/topics/${index + 1}/` }));
 const sections: NavItem[] = [
-  { label: 'Home', href: '/', icon: svg('M2.5 7.5 8 3l5.5 4.5V13h-11Z') },
+  { label: 'Home', href: '/' },
   { label: 'Reference', icon: svg('M3 2.5h10v11H3ZM5.5 5.5h5M5.5 8h5'), items: topics },
-  { label: 'Reading', icon: svg('M2.5 3.5h4.5v9H2.5ZM9 3.5h4.5v9H9Z'), items: [{ label: 'Guide', href: '/guide/' }, { label: 'Short note', href: '/note/' }] },
+  { label: 'Reading', icon: svg('M2.5 3.5h4.5v9H2.5ZM9 3.5h4.5v9H9Z'), items: [{ label: 'Guide', href: '/guide/' }, { label: 'A short note whose title is far too long for one row', href: '/note/' }] },
 ];
 ---
 <html lang="en">

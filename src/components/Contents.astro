@@ -3,7 +3,8 @@
 // heading being read is marked as the reader scrolls. With `tree`, deeper
 // headings nest under the heading above them in branches that start closed;
 // the branch holding the heading being read opens, and the label collapses
-// the whole panel, so a long page's contents fit the rail.
+// the whole panel, so a long page's contents fit the rail. The panel is a card
+// whose rows share the sidebar's style.
 import type { MarkdownHeading } from 'astro';
 import ContentsList, { type Branch } from './ContentsList.astro';
 import Eyebrow from './Eyebrow.astro';
@@ -32,17 +33,18 @@ for (const heading of listed) {
 ---
 
 {listed.length > 0 && (
-  <nav data-quire-contents class="py-8 pr-5 pl-2 text-sm leading-normal" aria-label={label}>
+  <nav data-quire-contents class="rounded-[16px] border border-fg/10 bg-surface/84 p-[8px]" aria-label={label}>
     {tree ? (
       <Eyebrow>
-        <button type="button" data-quire-contents-panel class="group flex cursor-pointer items-center gap-1.5 text-left" aria-expanded="true" aria-controls="quire-contents">
-          {label}<span aria-hidden="true" class="text-faint transition-transform group-aria-[expanded=false]:-rotate-90 motion-reduce:transition-none">▾</span>
+        <button type="button" data-quire-contents-panel class="group flex cursor-pointer items-center gap-1.5 text-left hover:text-fg" aria-expanded="true" aria-controls="quire-contents">
+          {label}
+          <svg class="size-[14px] text-faint transition-transform group-aria-[expanded=false]:-rotate-90 motion-reduce:transition-none" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4" /></svg>
         </button>
       </Eyebrow>
     ) : (
       <Eyebrow>{label}</Eyebrow>
     )}
-    <ul id="quire-contents"><ContentsList nodes={roots} /></ul>
+    <ul id="quire-contents" class="flex flex-col gap-px"><ContentsList nodes={roots} /></ul>
   </nav>
 )}
 

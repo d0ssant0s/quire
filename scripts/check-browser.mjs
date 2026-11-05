@@ -201,7 +201,7 @@ await note.close();
 // sidebar's view without scrolling the page; groups the reader closes stay
 // closed on the next page, but never the group holding the current page.
 const navigation = await open({ width: 1280 });
-expect('a link carries its icon', await navigation.$$eval('[data-quire-nav] a[href="/"] svg', (icons) => icons.length), 1);
+expect('a page row draws no icon', await navigation.$$eval('[data-quire-nav] a svg', (icons) => icons.length), 0);
 expect('a group carries its icon', await navigation.$$eval('[data-quire-nav] summary svg', (icons) => icons.length >= 2), true);
 const placement = await navigation.evaluate(() => {
   const box = document.querySelector('[data-quire-sidebar]').getBoundingClientRect();
@@ -238,6 +238,62 @@ await outline.click('[data-quire-contents-panel]');
 expect('the label collapses the panel', await outline.isVisible('#quire-contents'), false);
 expect('the collapsed panel says so', await outline.getAttribute('[data-quire-contents-panel]', 'aria-expanded'), 'false');
 await outline.close();
+
+// One navigation style: sidebar and rail rows share one computed row style
+// and one current-row pill, labels are sentence case in rows of the same
+// height, long titles keep to one line, and page rows start where the group
+// labels' text does. The rail's contents are a card.
+const styled = await open({ width: 1440, theme: 'light' });
+const look = (selector) =>
+  styled.$eval(selector, (element) => {
+    const css = getComputedStyle(element);
+    const keys = ['fontSize', 'lineHeight', 'fontWeight', 'padding', 'borderRadius', 'textTransform', 'letterSpacing'];
+    return { ...Object.fromEntries(keys.map((key) => [key, css[key]])), height: element.getBoundingClientRect().height };
+  });
+const row = { fontSize: '14px', lineHeight: '20px', padding: '0px 8px', borderRadius: '6px', height: 32 };
+const rows = {
+  'sidebar page row': '[data-quire-nav] a[href="/"]',
+  'sidebar group row': '[data-quire-nav] summary',
+  'rail row': '[data-quire-contents] a[data-level="0"][aria-current=false]',
+};
+for (const [name, selector] of Object.entries(rows)) {
+  const actual = await look(selector);
+  for (const [key, wanted] of Object.entries(row)) expect(`${name} ${key}`, actual[key], wanted);
+}
+const pill = (selector) => styled.$eval(selector, (element) => getComputedStyle(element).backgroundColor);
+expect('sidebar current row', await pill('[data-quire-nav] a[aria-current=page]'), 'rgb(238, 242, 255)');
+expect('rail current row', await pill('[data-quire-contents] a[aria-current=true]'), 'rgb(238, 242, 255)');
+const label = { fontSize: '12px', fontWeight: '500', textTransform: 'none', letterSpacing: 'normal', height: 32 };
+for (const [name, selector] of [['sidebar label', '[data-quire-nav] p'], ['rail label', '[data-quire-contents] p']]) {
+  const actual = await look(selector);
+  for (const [key, wanted] of Object.entries(label)) expect(`${name} ${key}`, actual[key], wanted);
+}
+const longTitle = 'A short note whose title is far too long for one row';
+const long = await styled.$eval('[data-quire-nav] a[href="/note/"]', (link) => {
+  const text = link.querySelector('span:last-child');
+  const css = getComputedStyle(text);
+  return { title: link.title, height: link.getBoundingClientRect().height, cut: text.scrollWidth > text.clientWidth, ellipsis: `${css.whiteSpace} ${css.textOverflow}` };
+});
+expect('a long title keeps to one row', long.height, 32);
+expect('a long title is cut', long.cut, true);
+expect('a long title ends in an ellipsis', long.ellipsis, 'nowrap ellipsis');
+expect('a long title is in the title attribute', long.title, longTitle);
+expect('a long title is the accessible name', await styled.getByRole('link', { name: longTitle, exact: true }).count(), 1);
+const edges = await styled.evaluate(() =>
+  ['a[href="/"] span:last-child', 'summary span:not([aria-hidden])', 'a[aria-current=page] span']
+    .map((selector) => Math.round(document.querySelector(`[data-quire-nav] ${selector}`).getBoundingClientRect().left))
+    .join(),
+);
+expect('page rows and group labels share one left edge', new Set(edges.split(',')).size, 1);
+expect('sidebar width', await styled.$eval('[data-quire-sidebar]', (element) => element.getBoundingClientRect().width), 256);
+expect('sidebar right border', await style(styled, '[data-quire-nav]', 'border-right-width'), '1px');
+expect('rail card radius', await style(styled, '[data-quire-contents]', 'border-radius'), '16px');
+expect('rail card border', await style(styled, '[data-quire-contents]', 'border-top-width'), '1px');
+const cardEdge = await style(styled, '[data-quire-contents]', 'border-top-color');
+// Chromium writes a mixed colour as oklab(l a b / alpha); an opaque one has no alpha.
+const alpha = Number(cardEdge.match(/\/ ([\d.]+)\)$/)?.[1] ?? 1);
+if (!(alpha > 0 && alpha < 1)) problems.push(`rail card border is not translucent: ${cardEdge}`);
+await styled.close();
 
 // Search against an endpoint: Ctrl+K opens the dialog with the input focused;
 // results come from the endpoint and the keyboard opens one; a later query
@@ -580,4 +636,4 @@ if (problems.length) {
   for (const problem of problems) console.error(`check-browser: ${problem}`);
   process.exit(1);
 }
-console.log('check-browser: themes, code, shell, menu, theme switch, sidebar, contents tree, search (endpoint, source, site-driven and Pagefind), tables and source lines ok');
+console.log('check-browser: themes, code, shell, menu, theme switch, sidebar, contents tree, navigation style, search (endpoint, source, site-driven and Pagefind), tables and source lines ok');
