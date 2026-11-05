@@ -1,7 +1,8 @@
 ---
-// The small uppercase label above a navigation list or panel.
+// The label above a navigation list or panel: sentence case in a 32 px row,
+// the height of the rows beneath it.
 interface Props { class?: string }
 const { class: className } = Astro.props;
 ---
 
-<p class:list={['mb-2 text-[11px] font-semibold tracking-[0.06em] text-faint uppercase', className]}><slot /></p>
+<p class:list={['flex h-[32px] items-center px-[8px] text-xs font-medium text-muted', className]}><slot /></p>

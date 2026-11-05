@@ -1,36 +1,40 @@
 ---
-// One level of the section navigation; Sidebar renders the first. A nested
-// level hangs from a guide line under its group, and a group's chevron turns
-// when it opens.
+// One level of the section navigation; Sidebar renders the first. Rows share
+// the rail's style (nav-row.ts) and keep to one line. Only groups draw icons.
+// Page rows start where the group labels' text starts: a nested level hangs
+// from a guide line under its group's icon, and at a level whose groups have
+// icons a link keeps the icon's space empty.
 import type { NavItem } from '../types';
+import { navLabel, navRow, navRowCurrent } from './nav-row';
 import NavIcon from './NavIcon.astro';
 
 interface Props { items: NavItem[]; current?: string; depth?: number; path?: string }
 const { items, current, depth = 0, path = '' } = Astro.props;
 const holds = (item: NavItem): boolean => (item.items ? item.items.some(holds) : item.href === current);
-const row = 'flex items-center gap-2 rounded-[7px] px-2 py-[5px] hover:bg-subtle hover:text-fg';
+const iconSpace = items.some((item) => item.items && item.icon);
 ---
 
-<ul class:list={['grid gap-px', depth > 0 && 'ml-4 border-l border-line pl-2']}>
+<ul class:list={['flex flex-col gap-px', depth > 0 && 'ml-[15px] border-l border-line pl-[8px]']}>
   {items.map((item) => (
     <li>
       {item.items ? (
         <details class="group" open={holds(item) || !item.collapsed} data-quire-group={`${path}/${item.label}`}>
-          <summary class:list={[row, 'cursor-pointer list-none font-medium text-fg [&::-webkit-details-marker]:hidden']}>
+          <summary class:list={[navRow, 'cursor-pointer list-none font-medium text-fg [&::-webkit-details-marker]:hidden']} title={item.label}>
             {item.icon && <NavIcon svg={item.icon} class="text-muted" />}
-            <span class="min-w-0 flex-1">{item.label}</span>
-            <svg class="size-[15px] shrink-0 -rotate-90 text-faint transition-transform group-open:rotate-0 motion-reduce:transition-none" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4" /></svg>
+            <span class={navLabel}>{item.label}</span>
+            <svg class="size-[16px] shrink-0 -rotate-90 text-faint transition-transform group-open:rotate-0 motion-reduce:transition-none" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4" /></svg>
           </summary>
           <Astro.self items={item.items} current={current} depth={depth + 1} path={`${path}/${item.label}`} />
         </details>
       ) : (
         <a
           href={item.href}
+          title={item.label}
           aria-current={item.href === current ? 'page' : undefined}
-          class:list={[row, 'text-muted aria-[current=page]:bg-accent-soft aria-[current=page]:font-medium aria-[current=page]:text-accent']}
+          class:list={[navRow, navRowCurrent, 'text-muted']}
         >
-          {item.icon && <NavIcon svg={item.icon} />}
-          <span class="min-w-0 flex-1">{item.label}</span>
+          {iconSpace && <span aria-hidden="true" class="size-[16px] shrink-0"></span>}
+          <span class={navLabel}>{item.label}</span>
         </a>
       )}
     </li>

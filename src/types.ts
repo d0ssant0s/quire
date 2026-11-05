@@ -1,8 +1,9 @@
 /**
  * One entry in a site's section navigation: a link, or a group of entries.
  *
- * `icon` is the markup of one `<svg>` element, drawn before the label at the
- * size of the text and in its colour. quire ships no icon set, so the site
+ * A group's `icon` is the markup of one `<svg>` element, drawn before the
+ * label at the size of the text and in its colour. A link's icon is not drawn:
+ * page rows carry none, so they line up under the group labels. quire ships no icon set, so the site
  * supplies the markup; it is inserted as written, so it must come from the
  * site's own build, never from a reader.
  */
