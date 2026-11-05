@@ -96,6 +96,28 @@
     -webkit-font-smoothing: antialiased;
     scroll-padding-top: calc(var(--quire-header) + 16px);
   }
+  /* The page, the sidebar and the rail scroll with the browser's own thin
+     scrollbar: a muted thumb on a transparent track, so a long page shows where
+     it is without a wide bar. scrollbar-color is inherited, so a table or a
+     list scrolling inside one of them takes the same colour; the width is not,
+     and stays the browser's own there. Only the look changes: the thumb is
+     still dragged, and the wheel, touch and keys scroll as before. */
+  html,
+  [data-quire-sidebar],
+  [data-quire-rail] {
+    scrollbar-width: thin;
+    scrollbar-color: var(--quire-scrollbar) transparent;
+  }
+  /* Under forced colours the system draws scrollbars from its own palette, at
+     its own width, so the reader's choice stands. */
+  @media (forced-colors: active) {
+    html,
+    [data-quire-sidebar],
+    [data-quire-rail] {
+      scrollbar-width: auto;
+      scrollbar-color: auto;
+    }
+  }
   ::selection {
     background: color-mix(in srgb, var(--quire-accent) 25%, transparent);
   }

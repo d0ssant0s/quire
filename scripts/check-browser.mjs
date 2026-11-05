@@ -1,7 +1,7 @@
 // Check the built example in a real browser: both themes and the system scheme,
 // highlighted code, the page shell at desktop and phone widths, the sidebar and
 // contents tree, a table that scrolls in its frame, a targeted source line,
-// reduced motion, the search: against a stand-in endpoint, a stand-in source
+// reduced motion, the thin scrollbars, the search: against a stand-in endpoint, a stand-in source
 // function and the example's own Pagefind index, and the glossary filter and
 // definition dialog.
 //
@@ -244,6 +244,117 @@ else {
 await scrolling.emulateMedia({ media: 'print' });
 expect('print leaves the article in the page flow', await scrolling.evaluate(() => document.documentElement.scrollHeight >= document.querySelector('.quire-prose').getBoundingClientRect().height), true);
 await scrolling.close();
+
+// Scrollbars: the page, the sidebar and the rail keep the browser's own
+// scrollbar, thin, with a muted thumb of the theme's colour on a track that
+// shows nothing; forced colours get the system's scrollbar back. Headless
+// Chromium hides scrollbars unless asked not to, so this runs in a browser
+// that draws them and measures the gutter each one takes. The gutter shows the
+// bar is there, and narrower than the system's; dragging the thumb and the keys
+// show it still scrolls.
+const barBrowser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined, ignoreDefaultArgs: ['--hide-scrollbars'] });
+const longPage = async (options, forcedColors = 'none') => {
+  const page = await barBrowser.newPage({ viewport: { width: options.width ?? 1440, height: 600 }, colorScheme: options.scheme ?? 'light', forcedColors });
+  await page.goto(`${base}/guide/`);
+  if (options.theme) await page.evaluate((value) => { document.documentElement.dataset.theme = value; }, options.theme);
+  await page.evaluate(() => {
+    for (const group of document.querySelectorAll('[data-quire-sidebar] details')) group.open = true;
+    const filler = document.createElement('div');
+    filler.style.height = '4000px';
+    document.querySelector('.quire-prose').append(filler);
+    // The guide's headings are few; give the rail enough to scroll as well.
+    const rail = document.querySelector('[data-quire-rail]');
+    const tall = document.createElement('div');
+    tall.style.height = '3000px';
+    rail.append(tall);
+  });
+  return page;
+};
+// What each scroller shows: the computed width and colour of its scrollbar, the
+// width the bar takes from the box and the overflow that lets it scroll.
+const scrollbars = (page) => page.evaluate(() => {
+  const read = (element, box) => {
+    const computed = getComputedStyle(element);
+    const edge = parseFloat(computed.borderLeftWidth) + parseFloat(computed.borderRightWidth);
+    return {
+      width: computed.scrollbarWidth,
+      color: computed.scrollbarColor,
+      gutter: box ? box.offsetWidth - box.clientWidth - edge : innerWidth - element.clientWidth,
+      overflow: computed.overflowY,
+      behaviour: computed.scrollBehavior,
+    };
+  };
+  const sidebar = document.querySelector('[data-quire-sidebar]');
+  const rail = document.querySelector('[data-quire-rail]');
+  return { page: read(document.documentElement), sidebar: read(sidebar, sidebar), rail: read(rail, rail) };
+});
+const native = await longPage({}, 'active');
+const system = await scrollbars(native);
+await native.close();
+for (const [name, bar] of Object.entries(system)) {
+  expect(`forced colours: the ${name} scrollbar width is the system's`, bar.width, 'auto');
+  expect(`forced colours: the ${name} scrollbar colour is the system's`, bar.color, 'auto');
+  if (bar.gutter < 12) problems.push(`forced colours: the ${name} scrollbar takes ${bar.gutter}px, not the system's width`);
+}
+for (const [label, options, thumb] of [
+  ['light theme', { theme: 'light' }, 'rgb(161, 161, 170) rgba(0, 0, 0, 0)'],
+  ['dark theme', { theme: 'dark' }, 'rgb(99, 99, 107) rgba(0, 0, 0, 0)'],
+  ['dark theme on a light system', { scheme: 'light', theme: 'dark' }, 'rgb(99, 99, 107) rgba(0, 0, 0, 0)'],
+  ['light theme on a dark system', { scheme: 'dark', theme: 'light' }, 'rgb(161, 161, 170) rgba(0, 0, 0, 0)'],
+  ['no theme on a dark system', { scheme: 'dark' }, 'rgb(99, 99, 107) rgba(0, 0, 0, 0)'],
+  ['no theme on a light system', { scheme: 'light' }, 'rgb(161, 161, 170) rgba(0, 0, 0, 0)'],
+]) {
+  const page = await longPage(options);
+  const bars = await scrollbars(page);
+  for (const [name, bar] of Object.entries(bars)) {
+    expect(`${label}: the ${name} scrollbar is thin`, bar.width, 'thin');
+    expect(`${label}: the ${name} scrollbar thumb and track`, bar.color, thumb);
+    if (bar.gutter <= 0) problems.push(`${label}: the ${name} scrollbar is not drawn`);
+    else if (bar.gutter >= system[name].gutter) problems.push(`${label}: the ${name} scrollbar takes ${bar.gutter}px, as much as the system's ${system[name].gutter}px`);
+    if (name !== 'page') expect(`${label}: the ${name} still scrolls natively`, bar.overflow, 'auto');
+    expect(`${label}: the ${name} scrolls without a forced animation`, bar.behaviour, 'auto');
+  }
+  await page.close();
+}
+
+// A thin bar is still a handle: dragging its thumb and the keys scroll the page
+// and the sidebar, each on its own.
+const grab = await longPage({});
+const dragged = async (x) => {
+  await grab.mouse.move(x, 14);
+  await grab.mouse.down();
+  await grab.mouse.move(x, 120, { steps: 6 });
+  await grab.mouse.up();
+  await grab.waitForTimeout(100);
+};
+const sidebarEdge = await grab.$eval('[data-quire-sidebar]', (box) => box.getBoundingClientRect().right - 1 - (box.offsetWidth - box.clientWidth - 1) / 2);
+await dragged(sidebarEdge);
+let moved = await grab.evaluate(() => ({ page: scrollY, sidebar: document.querySelector('[data-quire-sidebar]').scrollTop }));
+if (moved.sidebar <= 0) problems.push('dragging the sidebar scrollbar does not scroll it');
+expect('dragging the sidebar scrollbar leaves the page', moved.page, 0);
+await grab.evaluate(() => { document.querySelector('[data-quire-sidebar]').scrollTop = 0; });
+await dragged(await grab.evaluate(() => innerWidth - (innerWidth - document.documentElement.clientWidth) / 2));
+moved = await grab.evaluate(() => ({ page: scrollY, sidebar: document.querySelector('[data-quire-sidebar]').scrollTop }));
+if (moved.page <= 0) problems.push('dragging the page scrollbar does not scroll it');
+expect('dragging the page scrollbar leaves the sidebar', moved.sidebar, 0);
+await grab.evaluate(() => window.scrollTo(0, 0));
+await grab.focus('[data-quire-sidebar] a');
+await grab.keyboard.press('PageDown');
+await grab.waitForTimeout(100);
+moved = await grab.evaluate(() => ({ page: scrollY, sidebar: document.querySelector('[data-quire-sidebar]').scrollTop }));
+if (moved.sidebar <= 0) problems.push('Page Down in the sidebar does not scroll it');
+expect('Page Down in the sidebar leaves the page', moved.page, 0);
+await grab.evaluate(() => document.activeElement.blur());
+await grab.keyboard.press('PageDown');
+await grab.waitForTimeout(100);
+if ((await grab.evaluate(() => scrollY)) <= 0) problems.push('Page Down on the page does not scroll it');
+await grab.close();
+
+// The drawer on a phone takes the same bar; the page's own bar is the phone's.
+const phoneBars = await longPage({ width: 375 });
+expect('the phone drawer scrollbar is thin', (await scrollbars(phoneBars)).sidebar.width, 'thin');
+await phoneBars.close();
+await barBrowser.close();
 
 // The panels hold still while the article scrolls: the sidebar's box, the rows
 // in it, the handle on its edge and the rail keep their place in the window from
