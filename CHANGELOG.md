@@ -8,6 +8,14 @@ since the previous release, grouped as Breaking changes, Features, Changed,
 Fixed and Security; `npm run changelog` shows the next one. The release page
 on GitHub carries the same section.
 
+## 0.9.2 (2026-11-05)
+
+### Fixed
+
+- **page:** keep the sidebar and rail still when the article ends (#51) (#53)
+
+[All commits](https://github.com/d0ssant0s/quire/compare/v0.9.1...v0.9.2)
+
 ## 0.9.1 (2026-11-05)
 
 ### Fixed
