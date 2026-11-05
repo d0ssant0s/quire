@@ -8,6 +8,14 @@ since the previous release, grouped as Breaking changes, Features, Changed,
 Fixed and Security; `npm run changelog` shows the next one. The release page
 on GitHub carries the same section.
 
+## 0.6.0 (2026-11-05)
+
+### Breaking changes
+
+- **header:** Page no longer takes `skip`. Set `skip` (text or `false`) on Header instead, and `skipTo` when <main> has an id other than `quire-main`.
+
+[All commits](https://github.com/d0ssant0s/quire/compare/v0.5.0...v0.6.0)
+
 ## 0.5.0 (2026-11-05)
 
 ### Features
