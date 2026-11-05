@@ -51,8 +51,8 @@ const expect = (what, actual, wanted) => {
   if (actual !== wanted) problems.push(`${what}: got ${JSON.stringify(actual)}, want ${JSON.stringify(wanted)}`);
 };
 
-async function open({ width = 1280, scheme = 'light', theme, motion = 'no-preference', hash = '' }) {
-  const page = await browser.newPage({ viewport: { width, height: 900 }, colorScheme: scheme, reducedMotion: motion });
+async function open({ width = 1280, height = 900, scheme = 'light', theme, motion = 'no-preference', hash = '' }) {
+  const page = await browser.newPage({ viewport: { width, height }, colorScheme: scheme, reducedMotion: motion });
   await page.goto(`${base}/guide/${hash}`);
   if (theme) await page.evaluate((value) => { document.documentElement.dataset.theme = value; }, theme);
   return page;
@@ -244,6 +244,72 @@ else {
 await scrolling.emulateMedia({ media: 'print' });
 expect('print leaves the article in the page flow', await scrolling.evaluate(() => document.documentElement.scrollHeight >= document.querySelector('.quire-prose').getBoundingClientRect().height), true);
 await scrolling.close();
+
+// The panels hold still while the article scrolls: the sidebar's box, the rows
+// in it, the handle on its edge and the rail keep their place in the window from
+// the top of the article to its end and back. A sticky panel is held inside the
+// shell, so whatever follows the shell, a site's footer or the fraction a page's
+// height rounds away, would push the panels up once the article ends; checking
+// the panels' scrollTop alone sees none of it. A short window and closed groups
+// are the other shapes the panels take.
+const panelPose = (page) => page.evaluate(() => {
+  const top = (selector) => document.querySelector(selector)?.getBoundingClientRect().top;
+  const sidebar = document.querySelector('[data-quire-sidebar]');
+  // The same row each time: the first one below the brand when the panel is first measured.
+  window.panelRow ??= [...sidebar.querySelectorAll('[data-quire-nav] a, [data-quire-nav] summary')]
+    .find((link) => link.getBoundingClientRect().top > 100);
+  const row = window.panelRow;
+  const rail = document.querySelector('[data-quire-rail]');
+  return {
+    'sidebar top': top('[data-quire-sidebar]'),
+    'sidebar bottom': sidebar.getBoundingClientRect().bottom,
+    'sidebar brand': top('[data-quire-sidebar-brand]'),
+    'sidebar row': row.getBoundingClientRect().top,
+    'sidebar scroll': sidebar.scrollTop,
+    'resize handle': top('[data-quire-resize]'),
+    'rail top': rail.getBoundingClientRect().top,
+    'rail scroll': rail.scrollTop,
+    header: top('header'),
+  };
+});
+for (const { height, groups, footer } of [
+  { height: 900, groups: true, footer: 0 },
+  { height: 900, groups: true, footer: 48 },
+  { height: 500, groups: true, footer: 48 },
+  { height: 900, groups: false, footer: 48 },
+]) {
+  const label = `a ${height}px window, groups ${groups ? 'open' : 'closed'}, ${footer}px after the shell`;
+  const held = await open({ width: 1440, height });
+  await held.evaluate(([open, after]) => {
+    for (const group of document.querySelectorAll('[data-quire-sidebar] details')) group.open = open;
+    if (after) {
+      const footer = document.createElement('footer');
+      footer.style.height = `${after}px`;
+      document.body.append(footer);
+    }
+  }, [groups, footer]);
+  await held.evaluate(tall);
+  const reach = await held.evaluate(() => {
+    const box = document.querySelector('[data-quire-sidebar]');
+    box.scrollTop = box.scrollHeight;
+    box.scrollTop /= 2;
+    return document.documentElement.scrollHeight - innerHeight;
+  });
+  const settle = () => held.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+  const at = async (y) => {
+    await held.evaluate((to) => window.scrollTo(0, to), y);
+    await settle();
+    return panelPose(held);
+  };
+  const start = await at(0);
+  for (const [where, y] of [['the middle', Math.round(reach / 2)], ['the end', reach], ['the middle again', Math.round(reach / 2)], ['the top again', 0]]) {
+    const pose = await at(y);
+    for (const [part, value] of Object.entries(pose)) {
+      if (Math.abs(value - start[part]) > 0.01) problems.push(`${label}: at ${where} of the article the ${part} is ${value}, not ${start[part]}`);
+    }
+  }
+  await held.close();
+}
 
 // A heading link lands the heading clear of the header, with the article long.
 const deepLinked = await open({ width: 1440 });
