@@ -6,7 +6,9 @@
 // column the menu button collapses; on a phone it slides over the page. The
 // rail appears once there is room for it. <main> has an id (`quire-main`
 // unless `main.id` says otherwise) for Header's skip link, and takes focus
-// without a ring.
+// without a ring. The sidebar and the rail scroll in their own boxes and keep
+// a wheel or swipe at their ends from moving the page; the article scrolls the
+// window, with the header held at its top.
 //
 // A Header in the `header` slot is framed: on a desktop the sidebar runs the
 // window's full height on its own surface and the header starts at its edge,
@@ -51,7 +53,9 @@ const columns = sidebar
   : rail
     ? 'xl:grid-cols-[minmax(0,1fr)_248px]'
     : '';
-const side = 'top-(--quire-header) h-[calc(100vh-var(--quire-header))] overflow-y-auto';
+// overscroll-y-contain keeps a wheel or swipe at the end of either box from
+// scrolling the page behind it.
+const side = 'top-(--quire-header) h-[calc(100vh-var(--quire-header))] overflow-y-auto overscroll-y-contain';
 // Framed, the desktop sidebar rises into the header's row and fills the window.
 const fullHeight = 'lg:top-0 lg:-mt-(--quire-header) lg:h-screen';
 // Below lg the sidebar slides over the page. Closed, it is hidden as well as
