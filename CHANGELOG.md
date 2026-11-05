@@ -8,6 +8,14 @@ since the previous release, grouped as Breaking changes, Features, Changed,
 Fixed and Security; `npm run changelog` shows the next one. The release page
 on GitHub carries the same section.
 
+## 0.9.1 (2026-11-05)
+
+### Fixed
+
+- **page:** keep sidebar and rail scrolling from moving the article (#51) (#52)
+
+[All commits](https://github.com/d0ssant0s/quire/compare/v0.9.0...v0.9.1)
+
 ## 0.9.0 (2026-11-05)
 
 ### Features
