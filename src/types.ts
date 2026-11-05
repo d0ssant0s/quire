@@ -57,3 +57,14 @@ export type SearchAnswer = SearchResult[] | { results: SearchResult[]; filters?:
  * source again with the same query and filter.
  */
 export type SearchSource = (query: string, options: { signal: AbortSignal; filter?: string }) => Promise<SearchAnswer>;
+
+/** One glossary term, as `GlossaryDefinition` shows it. */
+export interface GlossaryEntry {
+  term: string;
+  /** The id of the term's heading in the full glossary, without `#`. */
+  anchor: string;
+  /** Rendered HTML, which the site has already made safe to insert. */
+  definition: string;
+  /** Rendered HTML naming what to say instead; omitted or null for none. */
+  avoid?: string | null;
+}
