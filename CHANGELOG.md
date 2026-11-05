@@ -8,6 +8,14 @@ since the previous release, grouped as Breaking changes, Features, Changed,
 Fixed and Security; `npm run changelog` shows the next one. The release page
 on GitHub carries the same section.
 
+## 0.8.0 (2026-11-05)
+
+### Features
+
+- **page:** resize the sidebar and toggle it with a panel icon or Ctrl+B (#49)
+
+[All commits](https://github.com/d0ssant0s/quire/compare/v0.7.1...v0.8.0)
+
 ## 0.7.1 (2026-11-05)
 
 ### Fixed
