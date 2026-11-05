@@ -65,6 +65,7 @@ styled with utilities, and `theme.css` names their sources for class detection.
 ---
 import Contents from '@d0ssant0s/quire/components/Contents.astro';
 import Header from '@d0ssant0s/quire/components/Header.astro';
+import NarrowContents from '@d0ssant0s/quire/components/NarrowContents.astro';
 import Page from '@d0ssant0s/quire/components/Page.astro';
 import Sidebar from '@d0ssant0s/quire/components/Sidebar.astro';
 import ThemeScript from '@d0ssant0s/quire/components/ThemeScript.astro';
@@ -77,6 +78,7 @@ import ThemeScript from '@d0ssant0s/quire/components/ThemeScript.astro';
     <Header menu><a href="/">My docs</a></Header>
     <Page>
       <Sidebar slot="sidebar" items={sections} current={Astro.url.pathname} />
+      <NarrowContents headings={headings} />
       <article class="quire-prose"><slot /></article>
       <Contents slot="rail" headings={headings} />
     </Page>
@@ -89,9 +91,10 @@ import ThemeScript from '@d0ssant0s/quire/components/ThemeScript.astro';
 | `ThemeScript` | Restores the reader's theme and collapsed sidebar before first paint; put it in `<head>` |
 | `Header` | The sticky header: a menu button when `menu` is set, the default slot for the site's name and links, an `end` slot for controls such as search, and the theme switch |
 | `ThemeSwitch` | Steps through the system scheme, light and dark, and remembers a pinned choice; the header includes it |
-| `Page` | The grid: a `sidebar` slot, the article, and a `rail` slot that appears once there is room; `wide` gives the article the whole width |
+| `Page` | The grid: a `sidebar` slot, the article, and a `rail` slot that appears once there is room; `wide` gives the article the whole width. It opens with a skip link to `<main>` (`skip` sets its text, `false` drops it); `main` passes attributes to `<main>`, whose id defaults to `quire-main` |
 | `Sidebar` | Section navigation from a tree of `NavItem` links and groups, marking the current page and scrolling it into view; groups the reader opens or closes stay so for the browser session |
 | `Contents` | The page's headings, from Astro's Markdown headings, marking the one being read; `tree` nests them in branches that open as the reader reaches them, for long pages |
+| `NarrowContents` | The same headings in a compact disclosure for the top of the article, shown only below the width where the rail appears; a choice or Escape closes it. Give it the rail's `minDepth` and `maxDepth` |
 
 A group `NavItem`, and the `Sidebar` label through its `icon` prop, can carry
 an icon: the markup of one `<svg>` element, drawn before the label in the
@@ -109,6 +112,10 @@ for their browser storage keys, `<storage>-theme`, `<storage>-sidebar` and
 `<storage>-nav-groups`; the default is `quire`. The menu button, the theme
 switch and the navigation's scripts are small scripts in their components and
 need no framework.
+
+On a narrow screen the closed sidebar is hidden, so its links are out of the
+tab order. Opening it moves focus to the current page's link. Closing it with
+Escape, the scrim or the menu button returns focus to the menu button.
 
 On the root element, `data-theme` pins the scheme, `data-sidebar-open` shows
 the sidebar on a phone and `data-sidebar-collapsed` hides it on a desktop. The

@@ -64,4 +64,25 @@ const { menu = false, storage = 'quire', class: className } = Astro.props;
   });
   wide.addEventListener('change', close);
   sync();
+
+  // Focus follows the sidebar on a narrow screen, whatever opens or closes it:
+  // in to the current page's link on opening, and back to the menu button on
+  // closing if focus was in the sidebar. A click on the scrim drops focus on
+  // the page first, so focus on the body counts as the sidebar's too.
+  const sidebar = document.querySelector<HTMLElement>('[data-quire-sidebar]');
+  if (sidebar && buttons.length) {
+    const focusIn = () => {
+      const link = sidebar.querySelector<HTMLElement>('[aria-current=page]') ?? sidebar.querySelector<HTMLElement>('a, summary');
+      link?.focus({ preventScroll: true });
+    };
+    const focusBack = () => {
+      const held = sidebar.contains(document.activeElement) || document.activeElement === document.body;
+      if (held) buttons[0].focus();
+    };
+    new MutationObserver(() => {
+      if (wide.matches) return;
+      if (root.hasAttribute('data-sidebar-open')) focusIn();
+      else focusBack();
+    }).observe(root, { attributes: true, attributeFilter: ['data-sidebar-open'] });
+  }
 </script>

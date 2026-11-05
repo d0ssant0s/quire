@@ -4,7 +4,8 @@
 // site may fill them conditionally; `wide` gives the article the whole width
 // and drops the rail, for tables and graphs. On a desktop the sidebar is a
 // column the menu button collapses; on a phone it slides over the page. The
-// rail appears once there is room for it.
+// rail appears once there is room for it. A skip link, hidden until focused,
+// leads past the sidebar to <main>, which takes focus without a ring.
 import type { HTMLAttributes } from 'astro/types';
 
 interface Props {
@@ -13,8 +14,13 @@ interface Props {
   class?: string;
   /** Attributes for the <main> element, such as a search indexer's markers. */
   main?: HTMLAttributes<'main'>;
+  /** The skip link's text; `false` leaves the link out. */
+  skip?: string | false;
 }
-const { wide = false, class: className, main = {} } = Astro.props;
+const { wide = false, class: className, main = {}, skip = 'Skip to content' } = Astro.props;
+// The main prop's class joins quire's own; spread as it is, it would be a
+// second class attribute, and the browser keeps only the first.
+const { class: mainClass, id: mainId = 'quire-main', ...mainAttributes } = main;
 // Astro counts a slot as filled when its content is conditional and renders
 // nothing, so a column is decided by what the slot renders.
 const filled = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
@@ -30,25 +36,34 @@ const columns = sidebar
     ? 'xl:grid-cols-[minmax(0,1fr)_248px]'
     : '';
 const side = 'top-(--quire-header) h-[calc(100vh-var(--quire-header))] overflow-y-auto';
+// Below lg the sidebar slides over the page. Closed, it is hidden as well as
+// moved away, so its links leave the tab order; the hiding waits for the slide
+// out to finish, and showing it is immediate so focus can move straight in.
+const drawer = [
+  'fixed left-0 z-25 w-[min(300px,86vw)] -translate-x-full invisible bg-bg',
+  'motion-safe:[transition:translate_180ms,visibility_0s_180ms]',
+  'sidebar-open:visible sidebar-open:translate-x-0 sidebar-open:shadow-xl motion-safe:sidebar-open:[transition:translate_180ms]',
+];
+const column = 'lg:visible lg:sticky lg:z-auto lg:w-auto lg:translate-x-0 lg:transition-none lg:sidebar-open:shadow-none lg:sidebar-collapsed:hidden';
+const skipLink = 'sr-only z-40 rounded-[6px] border border-line-strong bg-surface text-[14px] font-medium text-fg focus:not-sr-only focus:fixed focus:top-[10px] focus:left-[12px] focus:px-[12px] focus:py-[6px]';
 ---
 
+{skip && <a href={`#${mainId}`} data-quire-skip class={skipLink}>{skip}</a>}
 <div data-quire-shell class:list={['grid grid-cols-[minmax(0,1fr)]', columns, className]}>
   {sidebar && (
     <div
       id="quire-sidebar"
       data-quire-sidebar
-      class:list={[
-        side,
-        'fixed left-0 z-25 w-[min(300px,86vw)] -translate-x-full bg-bg transition-transform duration-180 motion-reduce:duration-0 sidebar-open:translate-x-0 sidebar-open:shadow-xl',
-        'lg:sticky lg:z-auto lg:w-auto lg:translate-x-0 lg:transition-none lg:sidebar-open:shadow-none lg:sidebar-collapsed:hidden',
-      ]}
+      class:list={[side, drawer, column]}
     ><Fragment set:html={sidebarHtml} /></div>
   )}
   {sidebar && <div data-quire-scrim class="fixed inset-x-0 top-(--quire-header) bottom-0 z-24 hidden bg-black/30 sidebar-open:block lg:sidebar-open:hidden"></div>}
   <main
-    {...main}
+    {...mainAttributes}
+    id={mainId}
+    tabindex="-1"
     data-quire-main
-    class:list={['w-full min-w-0 justify-self-center px-5 pt-7 pb-24 md:px-12', wide ? 'max-w-none' : 'max-w-[980px]', main.class]}
+    class:list={['w-full min-w-0 justify-self-center px-5 pt-7 pb-24 focus:outline-none md:px-12', wide ? 'max-w-none' : 'max-w-[980px]', mainClass]}
   ><slot /></main>
   {rail && <div data-quire-rail class:list={[side, 'sticky hidden p-[12px] xl:block']}><Fragment set:html={railHtml} /></div>}
 </div>

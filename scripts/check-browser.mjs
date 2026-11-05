@@ -295,6 +295,89 @@ const alpha = Number(cardEdge.match(/\/ ([\d.]+)\)$/)?.[1] ?? 1);
 if (!(alpha > 0 && alpha < 1)) problems.push(`rail card border is not translucent: ${cardEdge}`);
 await styled.close();
 
+// Narrow screens: the closed sidebar is out of the tab order, focus follows it
+// as it opens and closes, a skip link leads to <main>, and a disclosure holds
+// the contents the hidden rail would list.
+const narrow = await open({ width: 375 });
+// Names the focused element: a sidebar entry by its href, the menu button,
+// or else its id or tag.
+const focused = () => narrow.evaluate(() => {
+  const element = document.activeElement;
+  if (!element) return null;
+  if (element.closest('[data-quire-sidebar]')) return `sidebar ${element.getAttribute('href') ?? element.tagName}`;
+  if (element.hasAttribute('data-quire-menu')) return 'menu';
+  return element.id || element.tagName;
+});
+const settled = (page) => page.waitForFunction(() => document.querySelector('[data-quire-sidebar]').getAnimations().length === 0);
+expect('the closed sidebar is hidden', await style(narrow, '[data-quire-sidebar]', 'visibility'), 'hidden');
+const stops = [];
+for (let step = 0; step < 12; step += 1) {
+  await narrow.keyboard.press('Tab');
+  stops.push(await focused());
+}
+const intoSidebar = stops.filter((stop) => String(stop).startsWith('sidebar'));
+expect('Tab skips the closed sidebar', intoSidebar.join(), '');
+await narrow.click('[data-quire-menu]');
+await settled(narrow);
+expect('opening the sidebar moves focus to the current page', await focused(), 'sidebar /guide/');
+await narrow.mouse.click(360, 400);
+await settled(narrow);
+expect('closing by the scrim returns focus to the menu', await focused(), 'menu');
+expect('the sidebar hides again once closed', await style(narrow, '[data-quire-sidebar]', 'visibility'), 'hidden');
+await narrow.click('[data-quire-menu]');
+await settled(narrow);
+await narrow.keyboard.press('Escape');
+expect('closing by Escape returns focus to the menu', await focused(), 'menu');
+
+// The skip link shows when focused and moves focus to <main>, which keeps
+// the main prop's class beside quire's own.
+expect('the page has a skip link', await narrow.locator('[data-quire-skip]').count(), 1);
+if (await narrow.locator('[data-quire-skip]').count()) {
+  await narrow.focus('[data-quire-skip]');
+  const skipWidth = await narrow.$eval('[data-quire-skip]', (link) => link.getBoundingClientRect().width);
+  if (skipWidth < 20) problems.push(`the focused skip link is not shown (${skipWidth}px wide)`);
+  await narrow.keyboard.press('Enter');
+  expect('the skip link focuses main', await focused(), 'quire-main');
+}
+expect('main draws no focus ring', await style(narrow, 'main', 'outline-style'), 'none');
+const mainClasses = await narrow.$eval('main', (main) => ['example-main', 'w-full'].filter((name) => main.classList.contains(name)).join());
+expect('main keeps the prop class and its own', mainClasses, 'example-main,w-full');
+
+// The disclosure lists the rail's headings, closes after a choice, and closes
+// on Escape with focus back on its summary. No id is used twice.
+const disclosure = '[data-quire-narrow-contents]';
+expect('narrow contents show on a phone', await style(narrow, disclosure, 'display'), 'block');
+const narrowListed = await narrow.$$eval(`${disclosure} a`, (links) => links.map((link) => link.hash.slice(1)));
+const railListed = await narrow.$$eval('[data-quire-contents] a', (links) => links.map((link) => link.hash.slice(1)));
+expect('narrow contents list the rail headings', narrowListed.join(), railListed.join());
+const duplicates = await narrow.$$eval('[id]', (elements) => {
+  const ids = elements.map((element) => element.id);
+  return ids.filter((id, index) => ids.indexOf(id) !== index).join();
+});
+expect('no id is used twice', duplicates, '');
+const isOpen = () => narrow.$eval(disclosure, (details) => details.open);
+await narrow.click(`${disclosure} summary`);
+expect('the summary opens the contents', await isOpen(), true);
+await narrow.click(`${disclosure} a[href="#${narrowListed[1]}"]`);
+expect('a choice closes the contents', await isOpen(), false);
+expect('a choice reaches its heading', new URL(narrow.url()).hash, `#${narrowListed[1]}`);
+// The marked heading follows the scroll, open or not. (Clicking the summary
+// would scroll back up to it first.)
+await narrow.evaluate((id) => {
+  document.getElementById(id).scrollIntoView();
+  dispatchEvent(new Event('scroll'));
+}, narrowListed[2]);
+expect('the contents mark the heading being read', await narrow.$eval(`${disclosure} a[aria-current=true]`, (link) => link.hash.slice(1)), narrowListed[2]);
+await narrow.click(`${disclosure} summary`);
+await narrow.keyboard.press('Escape');
+expect('Escape closes the contents', await isOpen(), false);
+expect('Escape returns focus to the summary', await narrow.evaluate(() => document.activeElement?.tagName), 'SUMMARY');
+await narrow.close();
+const roomy = await open({ width: 1440 });
+expect('narrow contents hide beside the rail', await style(roomy, '[data-quire-narrow-contents]', 'display'), 'none');
+expect('the desktop sidebar is visible', await style(roomy, '[data-quire-sidebar]', 'visibility'), 'visible');
+await roomy.close();
+
 // Search against an endpoint: Ctrl+K opens the dialog with the input focused;
 // results come from the endpoint and the keyboard opens one; a later query
 // replaces a slower one; an empty answer and a failing endpoint say so; Escape
@@ -636,4 +719,4 @@ if (problems.length) {
   for (const problem of problems) console.error(`check-browser: ${problem}`);
   process.exit(1);
 }
-console.log('check-browser: themes, code, shell, menu, theme switch, sidebar, contents tree, navigation style, search (endpoint, source, site-driven and Pagefind), tables and source lines ok');
+console.log('check-browser: themes, code, shell, menu, theme switch, sidebar, contents tree, navigation style, narrow screens and focus, search (endpoint, source, site-driven and Pagefind), tables and source lines ok');
