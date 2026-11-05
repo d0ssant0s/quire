@@ -1,0 +1,94 @@
+---
+// The page's contents below the width where the rail appears: a native
+// disclosure a site puts at the top of its article, listing the headings
+// Contents lists, at the same depths and indents. The links work without
+// script; the script marks the heading being read, closes the disclosure
+// after a choice so the heading is not hidden under it, and closes it on
+// Escape. It adds no ids, and from xl up it is not displayed, so one set of
+// contents links is in the tab order at any width.
+import type { MarkdownHeading } from 'astro';
+import { listedHeadings } from './contents';
+import { navIndent, navLabel, navRow, navRowCurrent } from './nav-row';
+
+interface Props {
+  headings: MarkdownHeading[];
+  /** The shallowest and deepest heading levels listed; match the rail's. */
+  minDepth?: number;
+  maxDepth?: number;
+  label?: string;
+  class?: string;
+}
+const { headings, minDepth = 2, maxDepth = 3, label = 'On this page', class: className } = Astro.props;
+const listed = listedHeadings(headings, minDepth, maxDepth);
+---
+
+{listed.length > 0 && (
+  <details
+    data-quire-narrow-contents
+    data-pagefind-ignore
+    class:list={['group rounded-[16px] border border-fg/10 bg-surface/84 p-[8px] xl:hidden', className]}
+  >
+    <summary class:list={[navRow, 'cursor-pointer list-none font-medium text-fg [&::-webkit-details-marker]:hidden']}>
+      <span class={navLabel}>{label}</span>
+      <svg class="size-[16px] shrink-0 -rotate-90 text-faint transition-transform group-open:rotate-0 motion-reduce:transition-none" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4" /></svg>
+    </summary>
+    <nav aria-label={label} class="mt-px max-h-[50vh] overflow-y-auto">
+      <ul class="flex flex-col gap-px">
+        {listed.map((heading) => (
+          <li>
+            <a
+              href={`#${heading.slug}`}
+              title={heading.text}
+              data-level={heading.level}
+              class:list={[navRow, navRowCurrent, navIndent, 'text-muted']}
+            ><span class={navLabel}>{heading.text}</span></a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </details>
+)}
+
+<script>
+  import { linkTargets, readingIndex } from './contents';
+
+  const contents = document.querySelector<HTMLDetailsElement>('[data-quire-narrow-contents]');
+  if (contents) {
+    const summary = contents.querySelector<HTMLElement>('summary')!;
+    const list = contents.querySelector<HTMLElement>('nav')!;
+    const links = [...contents.querySelectorAll<HTMLAnchorElement>('a')];
+    const targets = linkTargets(links);
+
+    let current: HTMLAnchorElement | undefined;
+    const mark = () => {
+      const active = readingIndex(targets);
+      links.forEach((link, index) => link.setAttribute('aria-current', String(index === active)));
+      current = links[active];
+    };
+
+    // Opening scrolls the list so the marked heading is in its middle. It
+    // does not mark again: the open list pushes the article down, and the
+    // heading the reader was on is the one to show.
+    const reveal = () => {
+      if (!current) return;
+      const offset = current.getBoundingClientRect().top - list.getBoundingClientRect().top;
+      list.scrollTop += offset - list.clientHeight / 2;
+    };
+
+    addEventListener('scroll', mark, { passive: true });
+    contents.addEventListener('toggle', () => {
+      if (contents.open) reveal();
+    });
+    for (const link of links) {
+      link.addEventListener('click', () => {
+        contents.open = false;
+      });
+    }
+    contents.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !contents.open) return;
+      contents.open = false;
+      summary.focus();
+    });
+    mark();
+  }
+</script>

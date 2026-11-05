@@ -12,3 +12,6 @@ export const navRowCurrent =
 
 /** The label inside a row: one line, cut with an ellipsis. */
 export const navLabel = 'min-w-0 flex-1 truncate';
+
+/** A contents row's indent, by its `data-level` below the shallowest heading. */
+export const navIndent = 'data-[level=1]:pl-[20px] data-[level=2]:pl-[32px] data-[level=3]:pl-[44px]';

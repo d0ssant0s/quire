@@ -6,7 +6,8 @@
 // the whole panel, so a long page's contents fit the rail. The panel is a card
 // whose rows share the sidebar's style.
 import type { MarkdownHeading } from 'astro';
-import ContentsList, { type Branch } from './ContentsList.astro';
+import { contentsTree, listedHeadings } from './contents';
+import ContentsList from './ContentsList.astro';
 import Eyebrow from './Eyebrow.astro';
 
 interface Props {
@@ -18,18 +19,8 @@ interface Props {
   tree?: boolean;
 }
 const { headings, minDepth = 2, maxDepth = 3, label = 'On this page', tree = false } = Astro.props;
-const listed = headings.filter((heading) => heading.depth >= minDepth && heading.depth <= maxDepth);
-
-// Nests each heading under the nearest earlier heading shallower than it; a
-// flat list keeps every heading at the top.
-const roots: Branch[] = [];
-const stack: Branch[] = [];
-for (const heading of listed) {
-  const node: Branch = { ...heading, level: heading.depth - minDepth, children: [] };
-  while (stack.length && stack[stack.length - 1].depth >= heading.depth) stack.pop();
-  (tree && stack.length ? stack[stack.length - 1].children : roots).push(node);
-  stack.push(node);
-}
+const listed = listedHeadings(headings, minDepth, maxDepth);
+const roots = contentsTree(listed, tree);
 ---
 
 {listed.length > 0 && (
@@ -49,10 +40,12 @@ for (const heading of listed) {
 )}
 
 <script>
+  import { linkTargets, readingIndex } from './contents';
+
   const contents = document.querySelector<HTMLElement>('[data-quire-contents]');
   if (contents) {
     const links = [...contents.querySelectorAll<HTMLAnchorElement>('a')];
-    const targets = links.map((link) => document.getElementById(decodeURIComponent(link.hash.slice(1))));
+    const targets = linkTargets(links);
     const setOpen = (branch: Element, open: boolean) => {
       branch.querySelector(':scope > div > button')?.setAttribute('aria-expanded', String(open));
       const list = branch.querySelector<HTMLElement>(':scope > ul');
@@ -68,15 +61,7 @@ for (const heading of listed) {
       contents.querySelector<HTMLElement>('#quire-contents')!.hidden = !open;
     });
     const mark = () => {
-      // A heading counts as read once it passes the top quarter of the window,
-      // or the scroll margin a link lands it at, whichever is lower.
-      const first = targets.find(Boolean);
-      const margin = first ? parseFloat(getComputedStyle(first).scrollMarginTop) || 0 : 0;
-      const offset = Math.max(margin, innerHeight * 0.25);
-      let active = 0;
-      targets.forEach((target, index) => {
-        if (target && target.getBoundingClientRect().top - offset <= 0) active = index;
-      });
+      const active = readingIndex(targets);
       links.forEach((link, index) => link.setAttribute('aria-current', String(index === active)));
       // The branch holding the marked heading opens, and every branch around it.
       for (let branch = links[active]?.closest('[data-quire-branch]'); branch; branch = branch.parentElement?.closest('[data-quire-branch]')) {

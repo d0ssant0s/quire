@@ -3,6 +3,7 @@ import type { MarkdownHeading } from 'astro';
 import type { NavItem } from '@d0ssant0s/quire';
 import Contents from '@d0ssant0s/quire/components/Contents.astro';
 import Header from '@d0ssant0s/quire/components/Header.astro';
+import NarrowContents from '@d0ssant0s/quire/components/NarrowContents.astro';
 import Page from '@d0ssant0s/quire/components/Page.astro';
 import Sidebar from '@d0ssant0s/quire/components/Sidebar.astro';
 import ThemeScript from '@d0ssant0s/quire/components/ThemeScript.astro';
@@ -33,12 +34,13 @@ const sections: NavItem[] = [
       <a href="/" class="font-semibold">quire example</a>
       <Search slot="end" client:idle endpoint="/api/search" />
     </Header>
-    <Page class="mx-auto max-w-[1480px]">
+    <Page class="mx-auto max-w-[1480px]" main={{ class: 'example-main' }}>
       <Sidebar slot="sidebar" items={sections} current={Astro.url.pathname} />
       <!-- Pagefind indexes this body alone: the title, the kind it filters by, and the article. -->
       <div data-pagefind-body>
         {frontmatter.kind && <meta data-pagefind-filter="kind[content]" data-pagefind-meta="section[content]" content={frontmatter.kind} />}
         <h1 class="text-[30px] font-semibold" data-pagefind-meta="title">{frontmatter.title}</h1>
+        <NarrowContents headings={headings} class="mt-5" />
         <article class="quire-prose mt-7"><slot /></article>
       </div>
       {headings.length > 0 && <Contents slot="rail" headings={headings} tree />}
