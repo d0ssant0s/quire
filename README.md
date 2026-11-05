@@ -416,9 +416,12 @@ re-theme a site, override the `--quire-*` properties; don't restyle the rules
 or utilities that use them. A component also takes a `class` for adjustments
 of its own.
 
-The page, the sidebar and the contents rail use the browser's own thin scrollbar,
-its thumb coloured by `--quire-scrollbar` on a transparent track. Under forced
-colours they get the system's scrollbar back.
+Scrollbars are a 6px rounded thumb, `--quire-scrollbar`, on a transparent
+track; the thumb under the pointer takes `--quire-scrollbar-hover`. The page,
+the sidebar and the contents rail hide their thumb at rest. It shows while that
+area scrolls, while the mouse is over the sidebar or the rail, and under the
+pointer, so it can still be dragged. Scrolling stays the browser's own. Under
+forced colours they get the system's scrollbar back.
 
 ## Develop
 
@@ -446,7 +449,7 @@ deny-list.
 system scheme, highlighted code, the shell at desktop and phone widths, the
 menu button on both, the theme switch and what it remembers, the current-page
 mark and the contents rail, the copy controls, tables scrolling in their frame, a linked source
-line, the thin scrollbars and reduced motion:
+line, the scrollbars that show only when wanted and reduced motion:
 
 ```sh
 mise exec -- npx playwright install chromium   # once; or set CHROMIUM=/path/to/chromium

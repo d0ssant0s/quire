@@ -203,4 +203,26 @@ const column = 'lg:-mb-[100vh] lg:col-start-1 lg:row-start-1 lg:visible lg:stick
     addEventListener('resize', report);
     report();
   }
+
+  // The page, the sidebar and the rail show their scrollbar thumb only while
+  // it is wanted, which theme.css reads from two marks. Each scroll marks its
+  // scroller with data-quire-scrolling, and the mark goes once it has rested
+  // for a moment; a mouse over the sidebar or the rail marks it with
+  // data-quire-hovering until it leaves. The listeners are passive and only
+  // mark; the browser does the scrolling.
+  const rest = 700;
+  const timers = new WeakMap<HTMLElement, number>();
+  const mark = (scroller: HTMLElement) => {
+    clearTimeout(timers.get(scroller));
+    scroller.dataset.quireScrolling = '';
+    timers.set(scroller, window.setTimeout(() => delete scroller.dataset.quireScrolling, rest));
+  };
+  addEventListener('scroll', () => mark(root), { passive: true });
+  for (const scroller of document.querySelectorAll<HTMLElement>('[data-quire-sidebar], [data-quire-rail]')) {
+    scroller.addEventListener('scroll', () => mark(scroller), { passive: true });
+    scroller.addEventListener('pointerenter', (event) => {
+      if (event.pointerType === 'mouse') scroller.dataset.quireHovering = '';
+    });
+    scroller.addEventListener('pointerleave', () => delete scroller.dataset.quireHovering);
+  }
 </script>

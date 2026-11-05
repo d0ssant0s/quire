@@ -23,10 +23,11 @@
   --quire-faint: light-dark(#a1a1aa, #71717a);
   --quire-border: light-dark(#e4e4e7, rgb(255 255 255 / 0.08));
   --quire-border-strong: light-dark(#d4d4d8, #2e2e2e);
-  /* The thumb of the page's, the sidebar's and the rail's scrollbar, drawn on a
-     track that shows nothing. Muted enough not to compete with the text, and
-     still clear of both surfaces. */
-  --quire-scrollbar: light-dark(#a1a1aa, #63636b);
+  /* A scrollbar thumb, drawn on a track that shows nothing, and the thumb under
+     the pointer. Faint enough that a shown bar does not compete with the text;
+     the values are t3code's. */
+  --quire-scrollbar: light-dark(rgb(217 217 217), rgb(255 255 255 / 0.08));
+  --quire-scrollbar-hover: light-dark(rgb(191 191 191), rgb(255 255 255 / 0.12));
 
   /* Interaction. */
   --quire-accent: light-dark(#1b4ed8, #346bf1);

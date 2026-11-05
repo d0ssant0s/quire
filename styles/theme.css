@@ -96,26 +96,59 @@
     -webkit-font-smoothing: antialiased;
     scroll-padding-top: calc(var(--quire-header) + 16px);
   }
-  /* The page, the sidebar and the rail scroll with the browser's own thin
-     scrollbar: a muted thumb on a transparent track, so a long page shows where
-     it is without a wide bar. scrollbar-color is inherited, so a table or a
-     list scrolling inside one of them takes the same colour; the width is not,
-     and stays the browser's own there. Only the look changes: the thumb is
-     still dragged, and the wheel, touch and keys scroll as before. */
-  html,
+  /* Scrollbars are a 6px rounded thumb on a track that shows nothing. The page,
+     the sidebar and the rail hide their thumb at rest, so no bar runs down the
+     window. Page marks each of them with data-quire-scrolling while it scrolls
+     and the sidebar and the rail with data-quire-hovering while a mouse is
+     over them, and the thumb shows while either mark is there. A thumb under
+     the pointer shows and darkens. The lane stays reserved, so showing a thumb
+     moves nothing. Scrolling itself is the browser's: the thumb is still
+     dragged, and the wheel, touch and keys scroll as before.
+
+     Chromium styles the page's own scrollbar from the body, which inherits the
+     root's value, and matches no selector naming html for it; it repaints a
+     scrollbar for :hover on its element only on a later event. So the thumb's
+     colour is a variable the marks set, not a selector per state; its leading
+     underscore marks it as quire's own state, not a token for a site to set. Chromium
+     also ignores ::-webkit-scrollbar wherever scrollbar-width or scrollbar-color
+     is set, so those standard properties apply only where the pseudo-elements
+     do not exist. Under forced colours neither applies and the system draws
+     its own scrollbar. */
+  body * {
+    --_quire-scrollbar-thumb: var(--quire-scrollbar);
+  }
+  :root,
   [data-quire-sidebar],
   [data-quire-rail] {
-    scrollbar-width: thin;
-    scrollbar-color: var(--quire-scrollbar) transparent;
+    --_quire-scrollbar-thumb: transparent;
   }
-  /* Under forced colours the system draws scrollbars from its own palette, at
-     its own width, so the reader's choice stands. */
-  @media (forced-colors: active) {
-    html,
-    [data-quire-sidebar],
-    [data-quire-rail] {
-      scrollbar-width: auto;
-      scrollbar-color: auto;
+  :root[data-quire-scrolling],
+  [data-quire-sidebar]:is([data-quire-scrolling], [data-quire-hovering]),
+  [data-quire-rail]:is([data-quire-scrolling], [data-quire-hovering]) {
+    --_quire-scrollbar-thumb: var(--quire-scrollbar);
+  }
+  @media not (forced-colors: active) {
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track,
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      border-radius: 3px;
+      background: var(--_quire-scrollbar-thumb);
+    }
+    ::-webkit-scrollbar-thumb:hover,
+    ::-webkit-scrollbar-thumb:active {
+      background: var(--quire-scrollbar-hover);
+    }
+    @supports not selector(::-webkit-scrollbar) {
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--_quire-scrollbar-thumb) transparent;
+      }
     }
   }
   ::selection {
