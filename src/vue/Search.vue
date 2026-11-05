@@ -189,14 +189,24 @@ onBeforeUnmount(() => {
   cancel();
 });
 
+/** How many results the source holds for the chosen filter, when it says so. */
+const held = computed(() => (filter.value ? filters.value.find((entry) => entry.name === filter.value)?.count : total.value));
+
+/** "30 results", or "30 of 69 results" when the source holds more than it returned. */
+const countText = computed(() => {
+  const count = results.value.length;
+  const all = held.value ?? count;
+  if (all > count) return `${count} of ${all} results`;
+  return `${count} ${count === 1 ? 'result' : 'results'}`;
+});
+
 /** What a screen reader hears about the results; it is the visible text when there are none. */
 const summary = computed(() => {
-  const count = results.value.length;
   const where = filter.value ? ` in ${filter.value}` : '';
   if (state.value === 'idle') return `Type at least ${props.minLength} characters.`;
   if (state.value === 'loading') return 'Searching…';
   if (state.value === 'empty') return `No results for “${query.value.trim()}”${where}.`;
-  if (state.value === 'results') return `${count} ${count === 1 ? 'result' : 'results'}${where}.`;
+  if (state.value === 'results') return `${countText.value}${where}.`;
   return '';
 });
 </script>

@@ -188,7 +188,9 @@ next query has none of it, and survives a retry.
 with `aria-activedescendant`. The results are a labelled listbox; the filters are
 a labelled group of toggle buttons, each pressed or not, with its count. A status
 region announces waiting (`Searching…`), the number of results, with the filter
-when one is chosen, and an empty answer. A failure is an alert with a Retry
+when one is chosen, and an empty answer. A source that returns fewer results
+than its counts say it holds, because it caps them, is announced with both:
+"30 of 69 results", matching the count on the filter. A failure is an alert with a Retry
 button, and the field is `aria-busy` while a query is out.
 
 **Driving it from the site.** A site's own buttons, links and keys can open

@@ -363,6 +363,20 @@ expect('filters are counted from a plain list', await chips(), 'All 3*|Pages 2|R
 await standIn.click('[role=dialog] [data-quire-search-filters] button:has-text("Pages")');
 await said(standIn, '2 results in Pages.');
 expect('quire hides the results of other categories', (await options(standIn)).join('|'), 'HomeThe example page|Short noteA page without headings');
+// A source that returns fewer results than it holds: the status says both, so
+// it agrees with the filter row; an uncapped answer keeps the single count.
+await steer({ bare: false, cap: 2 });
+await standIn.click('[role=dialog] [data-quire-search-filters] button:has-text("All")');
+await said(standIn, '2 of 3 results.');
+expect('a capped answer shows its filter counts', await chips(), 'All 3*|Pages 2|Reading 1');
+await standIn.click('[role=dialog] [data-quire-search-filters] button:has-text("Reading")');
+await said(standIn, '1 result in Reading.');
+await steer({ cap: 1 });
+await standIn.click('[role=dialog] [data-quire-search-filters] button:has-text("Pages")');
+await said(standIn, '1 of 2 results in Pages.');
+await steer({ cap: 0 });
+await standIn.fill(field, 'pag');
+await said(standIn, '2 results in Pages.');
 await standIn.close();
 
 // Search driven by the site: a wrapper component holds `v-model:open` and

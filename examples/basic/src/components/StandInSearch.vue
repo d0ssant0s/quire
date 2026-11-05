@@ -2,14 +2,15 @@
 // A source that stands in for a search service, for `npm run check:browser`.
 // The check steers it through `window.quireStandIn`: `fail` makes it throw,
 // `bare` makes it answer a plain list the way a source without counts would,
-// and `calls` records what it was asked and whether it was cancelled. A query
+// `cap` returns at most that many results while the counts still cover the
+// whole query, as a source with a page size does, and `calls` records what it was asked and whether it was cancelled. A query
 // starting "slow" answers late with a result nothing else has, and takes no
 // notice of the signal, so quire itself has to drop it once it is superseded.
 import Search from '@d0ssant0s/quire/vue/Search.vue';
 import type { SearchSource } from '@d0ssant0s/quire/search';
 
 interface Call { query: string; filter?: string; aborted: boolean }
-const state = { fail: false, bare: false, calls: [] as Call[] };
+const state = { fail: false, bare: false, cap: 0, calls: [] as Call[] };
 if (typeof window !== 'undefined') (window as unknown as { quireStandIn: typeof state }).quireStandIn = state;
 
 const documents = [
@@ -34,7 +35,9 @@ const source: SearchSource = async (query, { signal, filter }) => {
   const found = documents.filter((entry) => `${entry.title} ${entry.excerpt}`.toLowerCase().includes(query.toLowerCase()));
   if (state.bare) return [...found, ...malformed];
   const filters = [...Object.entries(Object.groupBy(found, (entry) => entry.category))].map(([name, entries]) => ({ name, count: entries!.length }));
-  return { results: [...found.filter((entry) => !filter || entry.category === filter), ...malformed], filters };
+  const matching = found.filter((entry) => !filter || entry.category === filter);
+  const shown = state.cap ? matching.slice(0, state.cap) : matching;
+  return { results: [...shown, ...malformed], filters };
 };
 </script>
 
