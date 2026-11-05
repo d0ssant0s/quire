@@ -720,7 +720,7 @@ await narrow.click(`${disclosure} summary`);
 await narrow.keyboard.press('Escape');
 expect('Escape closes the contents', await isOpen(), false);
 expect('Escape returns focus to the summary', await narrow.evaluate(() => document.activeElement?.tagName), 'SUMMARY');
-await phoneBars.close();
+await narrow.close();
 const roomy = await open({ width: 1440 });
 expect('narrow contents hide beside the rail', await style(roomy, '[data-quire-narrow-contents]', 'display'), 'none');
 expect('the desktop sidebar is visible', await style(roomy, '[data-quire-sidebar]', 'visibility'), 'visible');
