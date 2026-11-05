@@ -8,6 +8,14 @@ since the previous release, grouped as Breaking changes, Features, Changed,
 Fixed and Security; `npm run changelog` shows the next one. The release page
 on GitHub carries the same section.
 
+## 0.9.0 (2026-11-05)
+
+### Features
+
+- **sidebar:** leave the label to screen readers with heading={false} (#50)
+
+[All commits](https://github.com/d0ssant0s/quire/compare/v0.8.0...v0.9.0)
+
 ## 0.8.0 (2026-11-05)
 
 ### Features
