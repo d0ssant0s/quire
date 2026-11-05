@@ -1,8 +1,10 @@
 ---
 // The page header: a menu button for the sidebar, the site's own content, and
 // the theme switch. The default slot holds the site's name and links; the `end`
-// slot holds controls such as search, before the theme switch.
+// slot holds controls such as search, before the theme switch. A skip link to
+// <main> comes first of all, so it is the first stop for a keyboard.
 import IconButton from './IconButton.astro';
+import SkipLink from './SkipLink.astro';
 import ThemeSwitch from './ThemeSwitch.astro';
 
 interface Props {
@@ -11,10 +13,15 @@ interface Props {
   /** Prefix of the localStorage keys; must match ThemeScript's. */
   storage?: string;
   class?: string;
+  /** The skip link's text; `false` leaves the link out. */
+  skip?: string | false;
+  /** The id of <main> the skip link leads to; match Page's `main.id`. */
+  skipTo?: string;
 }
-const { menu = false, storage = 'quire', class: className } = Astro.props;
+const { menu = false, storage = 'quire', class: className, skip = 'Skip to content', skipTo = 'quire-main' } = Astro.props;
 ---
 
+{skip && <SkipLink text={skip} target={skipTo} />}
 <header class:list={['sticky top-0 z-30 flex h-(--quire-header) items-center gap-3 border-b border-line bg-bg/85 px-4 backdrop-blur-md', className]}>
   {menu && (
     <IconButton data-quire-menu data-quire-storage={storage} aria-controls="quire-sidebar" aria-expanded="false" aria-label="Navigation">

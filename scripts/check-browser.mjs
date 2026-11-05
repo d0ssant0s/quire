@@ -333,6 +333,17 @@ expect('closing by Escape returns focus to the menu', await focused(), 'menu');
 // The skip link shows when focused and moves focus to <main>, which keeps
 // the main prop's class beside quire's own.
 expect('the page has a skip link', await narrow.locator('[data-quire-skip]').count(), 1);
+// It must be the first stop: Tab from the top of the page reaches it before
+// anything in the header.
+await narrow.evaluate(() => document.activeElement?.blur());
+await narrow.evaluate(() => window.scrollTo(0, 0));
+await narrow.evaluate(() => {
+  document.body.setAttribute('tabindex', '-1');
+  document.body.focus();
+  document.body.removeAttribute('tabindex');
+});
+await narrow.keyboard.press('Tab');
+expect('the first Tab reaches the skip link', await narrow.evaluate(() => document.activeElement?.hasAttribute('data-quire-skip') ?? false), true);
 if (await narrow.locator('[data-quire-skip]').count()) {
   await narrow.focus('[data-quire-skip]');
   const skipWidth = await narrow.$eval('[data-quire-skip]', (link) => link.getBoundingClientRect().width);
