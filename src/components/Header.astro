@@ -1,5 +1,6 @@
 ---
-// The page header: a menu button for the sidebar, the site's own content, and
+// The page header: a menu button for the sidebar, which Ctrl+B or Cmd+B also
+// presses, the site's own content, and
 // the theme switch. The default slot holds the site's name and links; the `end`
 // slot holds controls such as search, before the theme switch. A skip link to
 // <main> comes first of all, so it is the first stop for a keyboard. Put the
@@ -28,8 +29,11 @@ const { menu = false, storage = 'quire', class: className, skip = 'Skip to conte
 {skip && <SkipLink text={skip} target={skipTo} />}
 <header class:list={['sticky top-0 z-30 flex h-(--quire-header) items-center gap-3 bg-bg px-4', className]}>
   {menu && (
-    <IconButton data-quire-menu data-quire-storage={storage} aria-controls="quire-sidebar" aria-expanded="false" aria-label="Navigation">
-      <svg class="size-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11" /></svg>
+    <IconButton data-quire-menu data-quire-storage={storage} aria-controls="quire-sidebar" aria-expanded="false" aria-label="Navigation" aria-keyshortcuts="Control+B Meta+B">
+      {/* A phone slides the sidebar over the page; a desktop shows a panel that closes or opens. */}
+      <svg class="size-4 lg:hidden" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11" /></svg>
+      <svg data-quire-menu-icon="close" class="hidden size-4 lg:block lg:sidebar-collapsed:hidden" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="2" /><path d="M6 2.5v11M11 6 9 8l2 2" /></svg>
+      <svg data-quire-menu-icon="open" class="hidden size-4 lg:sidebar-collapsed:block" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="2" /><path d="M6 2.5v11M9 6l2 2-2 2" /></svg>
     </IconButton>
   )}
   <slot />
@@ -75,6 +79,16 @@ const { menu = false, storage = 'quire', class: className, skip = 'Skip to conte
   });
   wide.addEventListener('change', close);
   sync();
+
+  // Ctrl+B, or Cmd+B on a Mac, presses the menu button, except while typing.
+  const mac = /Mac|iPhone|iPad/.test(navigator.platform);
+  for (const button of buttons) button.title = `Toggle navigation (${mac ? '⌘B' : 'Ctrl+B'})`;
+  addEventListener('keydown', (event) => {
+    if (!buttons.length || event.key.toLowerCase() !== 'b' || !(mac ? event.metaKey : event.ctrlKey) || event.altKey || event.shiftKey) return;
+    if (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable]')) return;
+    event.preventDefault();
+    buttons[0].click();
+  });
 
   // Focus follows the sidebar on a narrow screen, whatever opens or closes it:
   // in to the current page's link on opening, and back to the menu button on

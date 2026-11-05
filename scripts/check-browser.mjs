@@ -323,6 +323,63 @@ expect('a collapsed sidebar gives the header the width', (await box(framed, 'hea
 expect('a collapsed sidebar gives the header its name', await shown(framed, 'header [data-quire-brand]'), true);
 await framed.click('[data-quire-menu]');
 await framed.close();
+// The desktop menu button shows a panel that closes, or opens once collapsed,
+// and Ctrl+B presses it except while typing.
+const toggled = await open({ width: 1440, theme: 'light' });
+expect('the expanded sidebar offers to close it', await shown(toggled, '[data-quire-menu-icon=close]'), true);
+expect('the expanded sidebar does not offer to open it', await shown(toggled, '[data-quire-menu-icon=open]'), false);
+await toggled.keyboard.press('Control+b');
+expect('Ctrl+B collapses the sidebar', await toggled.evaluate(() => document.documentElement.hasAttribute('data-sidebar-collapsed')), true);
+expect('the collapsed sidebar offers to open it', await shown(toggled, '[data-quire-menu-icon=open]'), true);
+await toggled.evaluate(() => document.body.append(Object.assign(document.createElement('input'), { id: 'typing' })));
+await toggled.focus('#typing');
+await toggled.keyboard.press('Control+b');
+expect('Ctrl+B while typing leaves the sidebar alone', await toggled.evaluate(() => document.documentElement.hasAttribute('data-sidebar-collapsed')), true);
+await toggled.close();
+
+// The handle on the sidebar's edge resizes it, by dragging or by keys, within
+// 208px and what leaves the article 640px; the width survives a reload and
+// a double-click restores the standard one.
+const resized = await open({ width: 1440, theme: 'light' });
+const sidebarWidth = () => resized.$eval('[data-quire-sidebar]', (element) => Math.round(element.getBoundingClientRect().width));
+const grip = await resized.$eval('[data-quire-resize]', (element) => {
+  const { left, width } = element.getBoundingClientRect();
+  return Math.round(left + width / 2);
+});
+expect('the handle sits on the sidebar edge', grip, 256);
+const drag = async (to) => {
+  await resized.mouse.move(256 + ((await sidebarWidth()) - 256), 400);
+  await resized.mouse.down();
+  await resized.mouse.move(to, 400, { steps: 5 });
+  await resized.mouse.up();
+};
+await drag(336);
+expect('dragging widens the sidebar', await sidebarWidth(), 336);
+expect('the framed header follows the edge', (await box(resized, 'header')).left, 336);
+expect('the handle reports the width', await resized.getAttribute('[data-quire-resize]', 'aria-valuenow'), '336');
+expect('the width is kept', await resized.evaluate(() => localStorage.getItem('quire-sidebar-width')), '336');
+await resized.reload();
+expect('a reload keeps the width', await sidebarWidth(), 336);
+await drag(40);
+expect('the sidebar narrows no further than 208px', await sidebarWidth(), 208);
+await resized.focus('[data-quire-resize]');
+await resized.keyboard.press('ArrowRight');
+expect('an arrow key widens the sidebar', await sidebarWidth(), 224);
+await resized.keyboard.press('End');
+expect('the sidebar leaves the article 640px', await sidebarWidth(), 800);
+await resized.setViewportSize({ width: 1100, height: 900 });
+expect('a narrower window narrows the kept width', await sidebarWidth(), 460);
+await resized.setViewportSize({ width: 1440, height: 900 });
+await resized.dblclick('[data-quire-resize]');
+expect('a double-click restores the standard width', await sidebarWidth(), 256);
+expect('the restored width is not kept', await resized.evaluate(() => localStorage.getItem('quire-sidebar-width')), null);
+await resized.click('[data-quire-menu]');
+expect('a collapsed sidebar has no handle', await shown(resized, '[data-quire-resize]'), false);
+await resized.close();
+const handlePhone = await open({ width: 375 });
+expect('a phone has no handle', await shown(handlePhone, '[data-quire-resize]'), false);
+await handlePhone.close();
+
 const framedDark = await open({ width: 1440, theme: 'dark' });
 const edge = await style(framedDark, '[data-quire-sidebar]', 'border-right-color');
 const edgeAlpha = Number(edge.match(/,\s*([\d.]+)\)$/)?.[1] ?? edge.match(/\/ ([\d.]+)\)$/)?.[1] ?? 1);
