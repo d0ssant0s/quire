@@ -1,7 +1,7 @@
 // Check the built example in a real browser: both themes and the system scheme,
 // highlighted code, the page shell at desktop and phone widths, the sidebar and
 // contents tree, a table that scrolls in its frame, a targeted source line,
-// reduced motion, the thin scrollbars, the search: against a stand-in endpoint, a stand-in source
+// reduced motion, the scrollbars that show only when wanted, the search: against a stand-in endpoint, a stand-in source
 // function and the example's own Pagefind index, and the glossary filter and
 // definition dialog.
 //
@@ -245,13 +245,14 @@ await scrolling.emulateMedia({ media: 'print' });
 expect('print leaves the article in the page flow', await scrolling.evaluate(() => document.documentElement.scrollHeight >= document.querySelector('.quire-prose').getBoundingClientRect().height), true);
 await scrolling.close();
 
-// Scrollbars: the page, the sidebar and the rail keep the browser's own
-// scrollbar, thin, with a muted thumb of the theme's colour on a track that
-// shows nothing; forced colours get the system's scrollbar back. Headless
+// Scrollbars: the page, the sidebar and the rail take a 6px rounded thumb on a
+// track that shows nothing, hidden at rest: it shows while its scroller
+// scrolls, while a mouse is over the sidebar or the rail, and under the
+// pointer, and forced colours get the system's scrollbar back. Headless
 // Chromium hides scrollbars unless asked not to, so this runs in a browser
-// that draws them and measures the gutter each one takes. The gutter shows the
-// bar is there, and narrower than the system's; dragging the thumb and the keys
-// show it still scrolls.
+// that draws them, measures the lane each one takes and reads the pixels in
+// it: a lane with no pixel apart from its background shows no thumb. Dragging
+// the thumb and the keys show it still scrolls.
 const barBrowser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined, ignoreDefaultArgs: ['--hide-scrollbars'] });
 const longPage = async (options, forcedColors = 'none') => {
   const page = await barBrowser.newPage({ viewport: { width: options.width ?? 1440, height: 600 }, colorScheme: options.scheme ?? 'light', forcedColors });
@@ -270,56 +271,122 @@ const longPage = async (options, forcedColors = 'none') => {
   });
   return page;
 };
-// What each scroller shows: the computed width and colour of its scrollbar, the
-// width the bar takes from the box and the overflow that lets it scroll.
-const scrollbars = (page) => page.evaluate(() => {
-  const read = (element, box) => {
+// Each scroller's lane in the window: the width its bar takes from the box, and
+// the overflow and scroll behaviour that leave scrolling to the browser.
+const lanes = (page) => page.evaluate(() => {
+  const read = (element) => {
     const computed = getComputedStyle(element);
-    const edge = parseFloat(computed.borderLeftWidth) + parseFloat(computed.borderRightWidth);
+    const right = parseFloat(computed.borderRightWidth);
+    const width = element.offsetWidth - element.clientWidth - parseFloat(computed.borderLeftWidth) - right;
+    const box = element.getBoundingClientRect();
+    const top = Math.max(0, box.top);
     return {
-      width: computed.scrollbarWidth,
-      color: computed.scrollbarColor,
-      gutter: box ? box.offsetWidth - box.clientWidth - edge : innerWidth - element.clientWidth,
+      clip: { x: box.right - right - width, y: top, width, height: Math.min(innerHeight, box.bottom) - top },
       overflow: computed.overflowY,
       behaviour: computed.scrollBehavior,
     };
   };
-  const sidebar = document.querySelector('[data-quire-sidebar]');
-  const rail = document.querySelector('[data-quire-rail]');
-  return { page: read(document.documentElement), sidebar: read(sidebar, sidebar), rail: read(rail, rail) };
+  const root = document.documentElement;
+  const page = {
+    clip: { x: root.clientWidth, y: 0, width: innerWidth - root.clientWidth, height: innerHeight },
+    overflow: getComputedStyle(root).overflowY,
+    behaviour: getComputedStyle(root).scrollBehavior,
+  };
+  return { page, sidebar: read(document.querySelector('[data-quire-sidebar]')), rail: read(document.querySelector('[data-quire-rail]')) };
 });
+// The pixels in a lane that differ from its most common colour, read from a
+// screenshot drawn on a canvas in a page of its own.
+const pixels = await barBrowser.newPage();
+const thumbPixels = async (page, clip) => {
+  const png = (await page.screenshot({ clip })).toString('base64');
+  return pixels.evaluate(async (source) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${source}`;
+    await image.decode();
+    const canvas = new OffscreenCanvas(image.width, image.height);
+    const context = canvas.getContext('2d');
+    context.drawImage(image, 0, 0);
+    const data = context.getImageData(0, 0, image.width, image.height).data;
+    const counts = new Map();
+    for (let i = 0; i < data.length; i += 4) {
+      const key = `${data[i]},${data[i + 1]},${data[i + 2]}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const background = [...counts].sort((a, b) => b[1] - a[1])[0][0].split(',').map(Number);
+    let differing = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (Math.abs(data[i] - background[0]) + Math.abs(data[i + 1] - background[1]) + Math.abs(data[i + 2] - background[2]) > 12) differing += 1;
+    }
+    return differing;
+  }, png);
+};
+// Which of the three lanes show a thumb now.
+const thumbsShown = async (page, measured) => {
+  const result = {};
+  for (const [name, lane] of Object.entries(measured)) result[name] = (await thumbPixels(page, lane.clip)) > 0;
+  return result;
+};
+const showing = (label, actual, wanted) => {
+  for (const name of ['page', 'sidebar', 'rail']) {
+    expect(`${label}: the ${name} thumb ${wanted.includes(name) ? 'shows' : 'is hidden'}`, actual[name], wanted.includes(name));
+  }
+};
+
 const native = await longPage({}, 'active');
-const system = await scrollbars(native);
+const system = await lanes(native);
+expect('forced colours: the page scrollbar width is the system\'s', await native.evaluate(() => getComputedStyle(document.documentElement).scrollbarWidth), 'auto');
 await native.close();
-for (const [name, bar] of Object.entries(system)) {
-  expect(`forced colours: the ${name} scrollbar width is the system's`, bar.width, 'auto');
-  expect(`forced colours: the ${name} scrollbar colour is the system's`, bar.color, 'auto');
-  if (bar.gutter < 12) problems.push(`forced colours: the ${name} scrollbar takes ${bar.gutter}px, not the system's width`);
+for (const [name, lane] of Object.entries(system)) {
+  if (lane.clip.width < 12) problems.push(`forced colours: the ${name} scrollbar takes ${lane.clip.width}px, not the system's width`);
 }
-for (const [label, options, thumb] of [
-  ['light theme', { theme: 'light' }, 'rgb(161, 161, 170) rgba(0, 0, 0, 0)'],
-  ['dark theme', { theme: 'dark' }, 'rgb(99, 99, 107) rgba(0, 0, 0, 0)'],
-  ['dark theme on a light system', { scheme: 'light', theme: 'dark' }, 'rgb(99, 99, 107) rgba(0, 0, 0, 0)'],
-  ['light theme on a dark system', { scheme: 'dark', theme: 'light' }, 'rgb(161, 161, 170) rgba(0, 0, 0, 0)'],
-  ['no theme on a dark system', { scheme: 'dark' }, 'rgb(99, 99, 107) rgba(0, 0, 0, 0)'],
-  ['no theme on a light system', { scheme: 'light' }, 'rgb(161, 161, 170) rgba(0, 0, 0, 0)'],
+for (const [label, options] of [
+  ['light theme', { theme: 'light' }],
+  ['dark theme', { theme: 'dark' }],
+  ['dark theme on a light system', { scheme: 'light', theme: 'dark' }],
+  ['light theme on a dark system', { scheme: 'dark', theme: 'light' }],
+  ['no theme on a dark system', { scheme: 'dark' }],
+  ['no theme on a light system', { scheme: 'light' }],
 ]) {
   const page = await longPage(options);
-  const bars = await scrollbars(page);
-  for (const [name, bar] of Object.entries(bars)) {
-    expect(`${label}: the ${name} scrollbar is thin`, bar.width, 'thin');
-    expect(`${label}: the ${name} scrollbar thumb and track`, bar.color, thumb);
-    if (bar.gutter <= 0) problems.push(`${label}: the ${name} scrollbar is not drawn`);
-    else if (bar.gutter >= system[name].gutter) problems.push(`${label}: the ${name} scrollbar takes ${bar.gutter}px, as much as the system's ${system[name].gutter}px`);
-    if (name !== 'page') expect(`${label}: the ${name} still scrolls natively`, bar.overflow, 'auto');
-    expect(`${label}: the ${name} scrolls without a forced animation`, bar.behaviour, 'auto');
+  const measured = await lanes(page);
+  for (const [name, lane] of Object.entries(measured)) {
+    expect(`${label}: the ${name} scrollbar lane is 6px`, lane.clip.width, 6);
+    if (name !== 'page') expect(`${label}: the ${name} still scrolls natively`, lane.overflow, 'auto');
+    expect(`${label}: the ${name} scrolls without a forced animation`, lane.behaviour, 'auto');
   }
+  // Loading scrolls the sidebar to the current page; let that mark rest.
+  await page.mouse.move(700, 300);
+  await page.waitForTimeout(900);
+  showing(`${label}, at rest`, await thumbsShown(page, measured), []);
+  await page.mouse.wheel(0, 400);
+  await page.waitForTimeout(150);
+  showing(`${label}, while the page scrolls`, await thumbsShown(page, measured), ['page']);
+  await page.waitForTimeout(900);
+  showing(`${label}, once the page rests`, await thumbsShown(page, measured), []);
+  await page.mouse.move(100, 300, { steps: 4 });
+  await page.waitForTimeout(150);
+  showing(`${label}, with the mouse over the sidebar`, await thumbsShown(page, measured), ['sidebar']);
+  await page.mouse.move(1300, 500, { steps: 4 });
+  await page.waitForTimeout(150);
+  showing(`${label}, with the mouse over the rail`, await thumbsShown(page, measured), ['rail']);
+  await page.mouse.move(700, 300, { steps: 4 });
+  await page.waitForTimeout(150);
+  showing(`${label}, with the mouse back on the article`, await thumbsShown(page, measured), []);
   await page.close();
 }
 
-// A thin bar is still a handle: dragging its thumb and the keys scroll the page
-// and the sidebar, each on its own.
+// A hidden thumb is still a handle: it shows under the pointer, dragging it and
+// the keys scroll the page and the sidebar, each on its own, and it hides again
+// once the page rests.
 const grab = await longPage({});
+const grabbed = await lanes(grab);
+await grab.mouse.move(700, 300);
+await grab.waitForTimeout(900);
+const pageThumb = grabbed.page.clip.x + grabbed.page.clip.width / 2;
+await grab.mouse.move(pageThumb, 14, { steps: 4 });
+await grab.waitForTimeout(150);
+showing('with the pointer on the page thumb', await thumbsShown(grab, grabbed), ['page']);
+await grab.mouse.move(700, 300, { steps: 4 });
 const dragged = async (x) => {
   await grab.mouse.move(x, 14);
   await grab.mouse.down();
@@ -327,16 +394,18 @@ const dragged = async (x) => {
   await grab.mouse.up();
   await grab.waitForTimeout(100);
 };
-const sidebarEdge = await grab.$eval('[data-quire-sidebar]', (box) => box.getBoundingClientRect().right - 1 - (box.offsetWidth - box.clientWidth - 1) / 2);
-await dragged(sidebarEdge);
+await dragged(grabbed.sidebar.clip.x + grabbed.sidebar.clip.width / 2);
 let moved = await grab.evaluate(() => ({ page: scrollY, sidebar: document.querySelector('[data-quire-sidebar]').scrollTop }));
 if (moved.sidebar <= 0) problems.push('dragging the sidebar scrollbar does not scroll it');
 expect('dragging the sidebar scrollbar leaves the page', moved.page, 0);
 await grab.evaluate(() => { document.querySelector('[data-quire-sidebar]').scrollTop = 0; });
-await dragged(await grab.evaluate(() => innerWidth - (innerWidth - document.documentElement.clientWidth) / 2));
+await dragged(pageThumb);
 moved = await grab.evaluate(() => ({ page: scrollY, sidebar: document.querySelector('[data-quire-sidebar]').scrollTop }));
 if (moved.page <= 0) problems.push('dragging the page scrollbar does not scroll it');
 expect('dragging the page scrollbar leaves the sidebar', moved.sidebar, 0);
+await grab.mouse.move(700, 300, { steps: 4 });
+await grab.waitForTimeout(900);
+showing('once a dragged page rests', await thumbsShown(grab, grabbed), []);
 await grab.evaluate(() => window.scrollTo(0, 0));
 await grab.focus('[data-quire-sidebar] a');
 await grab.keyboard.press('PageDown');
@@ -350,9 +419,10 @@ await grab.waitForTimeout(100);
 if ((await grab.evaluate(() => scrollY)) <= 0) problems.push('Page Down on the page does not scroll it');
 await grab.close();
 
-// The drawer on a phone takes the same bar; the page's own bar is the phone's.
+// The drawer on a phone takes the same 6px lane.
 const phoneBars = await longPage({ width: 375 });
-expect('the phone drawer scrollbar is thin', (await scrollbars(phoneBars)).sidebar.width, 'thin');
+await phoneBars.evaluate(() => { document.documentElement.dataset.sidebarOpen = ''; });
+expect('the phone drawer scrollbar lane is 6px', (await lanes(phoneBars)).sidebar.clip.width, 6);
 await phoneBars.close();
 await barBrowser.close();
 
