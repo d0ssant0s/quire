@@ -95,6 +95,7 @@ import ThemeScript from '@d0ssant0s/quire/components/ThemeScript.astro';
 | `Sidebar` | Section navigation from a tree of `NavItem` links and groups, marking the current page and scrolling it into view; groups the reader opens or closes stay so for the browser session |
 | `Contents` | The page's headings, from Astro's Markdown headings, marking the one being read; `tree` nests them in branches that open as the reader reaches them, for long pages |
 | `NarrowContents` | The same headings in a compact disclosure for the top of the article, shown only below the width where the rail appears; a choice or Escape closes it. Give it the rail's `minDepth` and `maxDepth` |
+| `ArticleControls` | Copy buttons on the articles a site selects: a heading's address and a code block's exact text, announced through a polite status region |
 
 A group `NavItem`, and the `Sidebar` label through its `icon` prop, can carry
 an icon: the markup of one `<svg>` element, drawn before the label in the
@@ -338,6 +339,31 @@ It emits `close` on Close, Escape or a click outside; the site then sets
 <GlossaryDefinition :entry="entry" url="/glossary/" @close="entry = null" />
 ```
 
+## Article controls
+
+`ArticleControls` adds a button to each heading that has an `id`, copying that
+heading's address, and one to each highlighted code block, copying its text as
+written. The site chooses where: put the component on the pages that should
+have the controls, once per page, and name the articles with `selector`
+(default `article.quire-prose`). A page that leaves it out, such as an
+accordion or a portable export, is untouched.
+
+```astro
+<ArticleControls selector="article.quire-prose:not([data-accordion])" />
+```
+
+The buttons are added by a small script, so the served HTML, the search index
+and a reader without scripting see the article as built. Hovering or focusing
+a heading or block shows its button, and touch screens always show it. Every
+outcome is announced through a polite status region (`Link to section Setup
+copied.`, `Code copied.`) and shown on the button for a moment. Where the async
+clipboard is absent, as on plain HTTP, the text is copied by selection. When
+the browser refuses, the announcement says what is left to do and leaves it in
+place: the heading's address in the address bar, or the code selected. Labels
+come from the heading's and the language's text and are set as text. Headings
+inside a `<details>`, and anything inside an island or an element with
+`data-quire-no-controls`, get no control.
+
 ## Reading classes
 
 Rendered Markdown has no element to put a utility on, so its styles are classes
@@ -393,7 +419,7 @@ deny-list.
 `check:browser` opens the example in Chromium and checks both themes and the
 system scheme, highlighted code, the shell at desktop and phone widths, the
 menu button on both, the theme switch and what it remembers, the current-page
-mark and the contents rail, tables scrolling in their frame, a linked source
+mark and the contents rail, the copy controls, tables scrolling in their frame, a linked source
 line and reduced motion:
 
 ```sh

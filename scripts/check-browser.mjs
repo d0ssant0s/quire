@@ -777,6 +777,122 @@ await definition.waitForSelector('[data-quire-glossary-dialog]', { state: 'detac
 expect('Close returns focus to the term that opened the dialog', await definition.evaluate(() => document.activeElement?.getAttribute('data-define')), 'term-delta');
 await definition.close();
 
+// Copy controls on the guide: a heading's address and a block's exact text
+// reach the clipboard and are announced; with no async clipboard the selection
+// route copies; a refusal says what is left to do and raises no error; labels
+// stay text; an article the site left out, and a heading in a <details>, get
+// nothing.
+const authoredBlock = `echo "<title>" \\\n\t&& printf '%s\\n' 'a\tb'   \n\ndone  `;
+// Markdown turns the straight quotes into curly ones.
+const literalHeading = 'A <b>literal</b> & “quoted” heading';
+const clipboardPermissions = ['clipboard-read', 'clipboard-write'];
+const copyStatus = '[data-quire-copy-status]';
+const heard = (page) => page.$eval(copyStatus, (element) => element.textContent);
+const codeFrame = (page) => page.locator('.quire-code-frame', { has: page.locator('code', { hasText: '<title>' }) });
+// Presses Enter on a focused control; the region is emptied first, so an
+// earlier outcome cannot satisfy the wait.
+async function pressCopy(page, target) {
+  await page.evaluate((selector) => { document.querySelector(selector).textContent = ''; }, copyStatus);
+  await target.focus();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction((selector) => document.querySelector(selector).textContent !== '', copyStatus);
+}
+async function copyPage(context, init) {
+  if (init) await context.addInitScript(init);
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto(`${base}/guide/`);
+  await page.waitForSelector('.quire-copy-control');
+  return { page, errors };
+}
+const readClipboard = async (context) => {
+  const reader = await context.newPage();
+  await reader.goto(`${base}/`);
+  return reader.evaluate(() => navigator.clipboard.readText());
+};
+
+const served = await (await fetch(`${base}/guide/`)).text();
+expect('the served HTML has the status region and no control', [served.includes('data-quire-copy-status'), /<button[^>]*quire-copy-control|class="quire-code-frame/.test(served)].join(), 'true,false');
+
+{
+  const context = await browser.newContext({ permissions: clipboardPermissions });
+  const { page, errors } = await copyPage(context);
+  expect('the status region is polite', await page.getAttribute(copyStatus, 'aria-live'), 'polite');
+  const heading = page.locator('.quire-prose h2#code');
+  const button = heading.locator('.quire-copy-control');
+  expect('the heading button names its section', await button.getAttribute('aria-label'), 'Copy link to section: Code');
+  await pressCopy(page, button);
+  expect('the heading address is copied', await page.evaluate(() => navigator.clipboard.readText()), `${base}/guide/#code`);
+  expect('the heading copy is announced', await heard(page), 'Link to section Code copied.');
+  expect('the button shows the outcome', await button.getAttribute('data-state'), 'copied');
+  expect('copying a link does not move the page', await page.evaluate(() => location.hash), '');
+  expect('the accordion heading in a details gets no button', await page.locator('details .quire-copy-control').count(), 0);
+
+  const block = codeFrame(page);
+  expect('the code button names the language', await block.locator('.quire-copy-control').getAttribute('aria-label'), 'Copy bash code');
+  await pressCopy(page, block.locator('.quire-copy-control'));
+  expect('the block is copied exactly: tabs, blank lines, trailing spaces', await page.evaluate(() => navigator.clipboard.readText()), authoredBlock);
+  expect('the code copy is announced', await heard(page), 'Code copied.');
+
+  const literal = page.locator('.quire-prose h3', { hasText: 'literal' });
+  expect('a heading with markup characters is a label as text', await literal.locator('.quire-copy-control').getAttribute('aria-label'), `Copy link to section: ${literalHeading}`);
+  await pressCopy(page, literal.locator('.quire-copy-control'));
+  expect('the announcement is the heading text as text', await heard(page), `Link to section ${literalHeading} copied.`);
+  expect('no markup came from the heading', await page.evaluate(() => document.querySelectorAll('.quire-copy-control b, [data-quire-copy-status] *').length), 0);
+  expect('the copy controls raised no error', errors.join(), '');
+  await context.close();
+}
+
+// Without the async clipboard (plain HTTP, older browsers) the text is selected
+// and copied from an off-screen field, which is then removed.
+{
+  const context = await browser.newContext({ permissions: clipboardPermissions });
+  const { page } = await copyPage(context, () => Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true }));
+  await pressCopy(page, page.locator('.quire-prose h2#code .quire-copy-control'));
+  expect('without the async clipboard the copy is announced', await heard(page), 'Link to section Code copied.');
+  await pressCopy(page, codeFrame(page).locator('.quire-copy-control'));
+  expect('without the async clipboard the code is announced', await heard(page), 'Code copied.');
+  expect('the helper field is removed', await page.locator('textarea').count(), 0);
+  expect('focus stays on the button', await page.evaluate(() => document.activeElement?.classList.contains('quire-copy-control')), true);
+  // A page of the same context cannot read it back: the script removed the API there too.
+  const other = await browser.newContext({ permissions: clipboardPermissions });
+  expect('without the async clipboard the code reaches the clipboard', await readClipboard(other), authoredBlock);
+  await other.close();
+  await context.close();
+}
+
+// A browser that refuses: the heading's address is left in the address bar, the
+// code is selected, each says so, and nothing is thrown.
+{
+  const context = await browser.newContext({ permissions: clipboardPermissions });
+  const refuse = () => {
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.reject(new DOMException('denied', 'NotAllowedError')) }, configurable: true });
+    document.execCommand = () => false;
+  };
+  const { page, errors } = await copyPage(context, refuse);
+  const button = page.locator('.quire-prose h2#code .quire-copy-control');
+  await pressCopy(page, button);
+  expect('a refused heading copy says what is left to do', await heard(page), 'Copy was blocked. The address bar now holds the link to section Code.');
+  expect('the address bar holds the heading link', await page.evaluate(() => location.hash), '#code');
+  expect('the button shows the failure', await button.getAttribute('data-state'), 'failed');
+  await pressCopy(page, codeFrame(page).locator('.quire-copy-control'));
+  expect('a refused code copy says what is left to do', await heard(page), 'Copy was blocked. The code is selected: use your copy shortcut to copy it.');
+  expect('the whole block is selected', await page.evaluate(() => getSelection()?.toString()), authoredBlock);
+  expect('a refused copy raises no error', errors.join(), '');
+  await context.close();
+}
+
+// A page the site left out of the controls has none, and no status region.
+{
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await page.goto(`${base}/plain/`);
+  await page.waitForSelector('.quire-prose h2');
+  await page.waitForTimeout(300);
+  expect('an article the site left out gets no controls', await page.locator('.quire-copy-control, .quire-code-frame, [data-quire-copy-status]').count(), 0);
+  await page.close();
+}
+
 // What a reader downloads: the page's scripts, compressed, before and after
 // the search is first used. The budget catches a framework or kit grown by
 // accident; the figures are printed for comparison. The page that searches
@@ -831,4 +947,4 @@ if (problems.length) {
   for (const problem of problems) console.error(`check-browser: ${problem}`);
   process.exit(1);
 }
-console.log('check-browser: themes, code, shell, menu, theme switch, sidebar, contents tree, navigation style, narrow screens and focus, search (endpoint, source, site-driven and Pagefind), glossary filter and definition, tables and source lines ok');
+console.log('check-browser: themes, code, shell, menu, theme switch, sidebar, contents tree, navigation style, narrow screens and focus, search (endpoint, source, site-driven and Pagefind), glossary filter and definition, copy controls, tables and source lines ok');

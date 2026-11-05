@@ -88,3 +88,31 @@
   .quire-source-line:target { background: var(--quire-accent-soft); }
   .quire-prose pre.quire-source-text { white-space: pre-wrap; font-family: var(--quire-font-sans); font-size: 14px; line-height: 1.65; background: var(--quire-surface) !important; max-width: var(--quire-measure); }
 }
+
+/* Copy controls (ArticleControls). Where a pointer can hover, a control shows
+   when its heading or code block is hovered or holds focus; on touch it is
+   always present, in a row above the block so it never covers code. Focus shows
+   it everywhere, so a keyboard reader never meets an invisible stop. */
+@layer components {
+  .quire-copy-control { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 6px; border: 1px solid var(--quire-border); border-radius: 6px; background: var(--quire-surface); color: var(--quire-muted); font: inherit; font-size: 12px; font-weight: 400; letter-spacing: 0; line-height: 1; cursor: pointer; }
+  .quire-copy-control:hover, .quire-copy-control:focus-visible { color: var(--quire-fg); border-color: var(--quire-border-strong); }
+  .quire-copy-control:focus-visible { outline: 2px solid var(--quire-accent); outline-offset: 1px; }
+  .quire-copy-control__icon { display: inline-flex; }
+  .quire-copy-control__label:empty { display: none; }
+  .quire-copy-control[data-state='failed'] { color: var(--quire-fg); border-color: var(--quire-fg); }
+  .quire-copy-control--heading { margin-inline-start: 8px; vertical-align: middle; }
+  .quire-code-frame { position: relative; margin: 0 0 14px; }
+  .quire-code-frame > pre { margin: 0; }
+  .quire-copy-control--code { position: absolute; top: 8px; right: 8px; }
+  @media (hover: hover) {
+    .quire-copy-control { opacity: 0; transition: opacity 120ms; }
+    .quire-prose :is(h2, h3, h4, h5, h6):hover > .quire-copy-control, .quire-code-frame:hover > .quire-copy-control, .quire-copy-control:focus-visible, .quire-copy-control[data-state] { opacity: 1; }
+  }
+  @media (hover: none) {
+    .quire-code-frame { padding-top: 30px; }
+    .quire-copy-control--code { top: 0; right: 0; }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quire-copy-control { transition: none; }
+}

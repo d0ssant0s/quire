@@ -24,11 +24,24 @@ the accent and the code tokens.
 
 > A quotation stays muted and indented.
 
+Markup characters in a heading are text to the copy controls:
+
+### A &lt;b&gt;literal&lt;/b&gt; &amp; "quoted" heading
+
 ## Code
 
 ```js
 // Shiki writes both themes; the page's scheme picks one.
 const answer = 42;
+```
+
+Markup in code is text to the copy controls:
+
+```bash
+echo "<title>" \
+	&& printf '%s\n' 'a	b'   
+
+done  
 ```
 
 ## Tables
