@@ -94,7 +94,7 @@ import ThemeScript from '@d0ssant0s/quire/components/ThemeScript.astro';
 | `SkipLink` | The skip link on its own (`text`, `target`), for a site without `Header`; put it first in `<body>` |
 | `ThemeSwitch` | Steps through the system scheme, light and dark, and remembers a pinned choice; the header includes it |
 | `Page` | The grid: a `sidebar` slot, the article, and a `rail` slot that appears once there is room; `wide` gives the article the whole width. `main` passes attributes to `<main>`, whose id defaults to `quire-main`; `storage` is the prefix of the sidebar width's key. A `Header` in the `header` slot is framed, and a `brand` slot heads the sidebar; see below |
-| `Sidebar` | Section navigation from a tree of `NavItem` links and groups, marking the current page and scrolling it into view; groups the reader opens or closes stay so for the browser session |
+| `Sidebar` | Section navigation from a tree of `NavItem` links and groups, marking the current page and scrolling it into view; groups the reader opens or closes stay so for the browser session. `label` names it above the tree and for screen readers; `heading={false}` keeps the name for screen readers only |
 | `Contents` | The page's headings, from Astro's Markdown headings, marking the one being read; `tree` nests them in branches that open as the reader reaches them, for long pages |
 | `NarrowContents` | The same headings in a compact disclosure for the top of the article, shown only below the width where the rail appears; a choice or Escape closes it. Give it the rail's `minDepth` and `maxDepth` |
 | `ArticleControls` | Copy buttons on the articles a site selects: a heading's address and a code block's exact text, announced through a polite status region |
