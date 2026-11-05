@@ -8,6 +8,14 @@ since the previous release, grouped as Breaking changes, Features, Changed,
 Fixed and Security; `npm run changelog` shows the next one. The release page
 on GitHub carries the same section.
 
+## 0.9.4 (2026-11-05)
+
+### Fixed
+
+- **scrollbars:** hide the page, sidebar and rail thumbs until wanted (#56)
+
+[All commits](https://github.com/d0ssant0s/quire/compare/v0.9.3...v0.9.4)
+
 ## 0.9.3 (2026-11-05)
 
 ### Fixed
