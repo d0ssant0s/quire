@@ -74,15 +74,15 @@
 /* Page's frame around a header in its `header` slot: on a desktop the sidebar
    fills the window's height, so the header starts at the sidebar's edge, and
    the site's name moves from the header to the top of the sidebar. A
-   collapsed sidebar gives the header its width and its name back. */
-@layer components {
-  @media (min-width: 64rem) {
-    :root:not([data-sidebar-collapsed]) [data-quire-frame~='sidebar'] > header {
-      margin-left: var(--quire-sidebar-width);
-    }
-    :root:not([data-sidebar-collapsed]) [data-quire-frame~='brand'] > header [data-quire-brand] {
-      display: none;
-    }
+   collapsed sidebar gives the header its width and its name back. The rules
+   sit outside every layer, so they win over the utilities a site gives its
+   header and name, such as a flex display. */
+@media (min-width: 64rem) {
+  :root:not([data-sidebar-collapsed]) [data-quire-frame~='sidebar'] > header {
+    margin-left: var(--quire-sidebar-width);
+  }
+  :root:not([data-sidebar-collapsed]) [data-quire-frame~='brand'] > header [data-quire-brand] {
+    display: none;
   }
 }
 
