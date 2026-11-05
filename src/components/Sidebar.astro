@@ -18,12 +18,14 @@ interface Props {
   icon?: string;
   /** Prefix of the sessionStorage key `<storage>-nav-groups`. */
   storage?: string;
+  /** Show the label above the navigation; `false` leaves it to screen readers, as for a tree of the whole site under the site's name. */
+  heading?: boolean;
 }
-const { items, current, label = 'Sections', icon, storage = 'quire' } = Astro.props;
+const { items, current, label = 'Sections', icon, storage = 'quire', heading = true } = Astro.props;
 ---
 
 <nav data-quire-nav data-quire-storage={storage} class="px-[12px] pt-[12px] pb-8" aria-label={label}>
-  <Eyebrow class="gap-[8px]">{icon && <NavIcon svg={icon} />}{label}</Eyebrow>
+  {heading && <Eyebrow class="gap-[8px]">{icon && <NavIcon svg={icon} />}{label}</Eyebrow>}
   <NavList items={items} current={current} />
 </nav>
 
