@@ -42,4 +42,4 @@ export default function quire(options: QuireOptions = {}): AstroIntegration {
   };
 }
 
-export type { NavItem, SearchAnswer, SearchFilter, SearchResult, SearchSource } from './types';
+export type { GlossaryEntry, NavItem, SearchAnswer, SearchFilter, SearchResult, SearchSource } from './types';

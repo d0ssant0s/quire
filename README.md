@@ -292,6 +292,52 @@ metadata, its excerpt as text with Pagefind's highlighting removed. Options:
 A site that ranks results its own way, or promotes an exact match, writes its
 own `SearchSource` and can call `pagefindSource` inside it.
 
+### Glossary
+
+Two components for a site with a glossary page. Both are Vue islands; the term
+marking, the glossary data and loading the dialog on demand stay with the site.
+
+**`GlossaryFilter`** (`@d0ssant0s/quire/vue/GlossaryFilter.vue`) adds controls
+to a glossary article the site renders statically: `h2` sections, each holding
+`h3` terms, each followed by its definition. Without script the article is
+plain and fully indexed. With it, sections and terms fold into native
+`<details>` (styled by `quire-accordion`), and the controls appear: a field
+that keeps the terms containing every typed word in their name, definition or
+avoid list, a count, a no-match message with a way back, Clear (or Escape), and
+expand all and collapse all for the terms showing. A link to a hidden term, on
+load or later, lifts the filter, opens what holds the term and scrolls to it.
+Printing opens and shows every term, and restores the reader's view after.
+
+```astro
+<GlossaryFilter client:load />
+<article class="quire-prose" data-quire-glossary><Content /></article>
+```
+
+| Prop | |
+| --- | --- |
+| `article` | CSS selector of the article. Default `[data-quire-glossary]` |
+| `label`, `placeholder` | The field's label and placeholder |
+
+**`GlossaryDefinition`** (`@d0ssant0s/quire/vue/GlossaryDefinition.vue`) shows
+a `GlossaryEntry` (`term`, `anchor`, `definition` and optional `avoid`, both
+rendered HTML that the site has made safe) in a modal dialog, with a link to
+`<url>#<anchor>` in the full glossary, in a new tab if that is another origin.
+The title and Close stay above the definition, which scrolls. Focus goes to
+Close on opening and returns afterwards to what had it, or to `trigger`.
+
+| Prop | |
+| --- | --- |
+| `entry` | The `GlossaryEntry` to show; `null` keeps the dialog closed |
+| `url` | Where the full glossary is, without a fragment |
+| `trigger` | Optional element to focus on closing, when it is not the one that had focus on opening |
+
+It emits `close` on Close, Escape or a click outside; the site then sets
+`entry` to `null`.
+
+```vue
+<GlossaryDefinition :entry="entry" url="/glossary/" @close="entry = null" />
+```
+
 ## Reading classes
 
 Rendered Markdown has no element to put a utility on, so its styles are classes

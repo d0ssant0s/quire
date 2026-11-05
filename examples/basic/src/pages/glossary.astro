@@ -1,0 +1,25 @@
+---
+import Bare from '../layouts/Bare.astro';
+import GlossaryFilter from '@d0ssant0s/quire/vue/GlossaryFilter.vue';
+import GlossaryDialogDemo from '../components/GlossaryDialogDemo.vue';
+---
+<Bare title="Glossary">
+  <p class="text-muted mt-2">
+    The filter folds the article below. <a href="#term-gamma" class="text-accent underline">Jump to Gamma</a>.
+  </p>
+  <GlossaryDialogDemo client:load />
+  <GlossaryFilter client:load />
+  <article class="quire-prose" data-quire-glossary>
+    <h2 id="core">Core</h2>
+    <h3 id="term-alpha">Alpha</h3>
+    <p>The first term, used when nothing else is said.</p>
+    <h3 id="term-beta">Beta</h3>
+    <p>The second term, which follows <strong>alpha</strong>.</p>
+    <h2 id="extras">Extras</h2>
+    <h3 id="term-gamma">Gamma</h3>
+    <p>A term in another section.</p>
+    <p>Avoid: third.</p>
+    <h3 id="term-delta">Delta</h3>
+    <p>The last one.</p>
+  </article>
+</Bare>

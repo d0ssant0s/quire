@@ -1,8 +1,9 @@
 // Check the built example in a real browser: both themes and the system scheme,
 // highlighted code, the page shell at desktop and phone widths, the sidebar and
 // contents tree, a table that scrolls in its frame, a targeted source line,
-// reduced motion and the search: against a stand-in endpoint, a stand-in source
-// function and the example's own Pagefind index.
+// reduced motion, the search: against a stand-in endpoint, a stand-in source
+// function and the example's own Pagefind index, and the glossary filter and
+// definition dialog.
 //
 // CHROMIUM names a Chromium binary to use; without it Playwright uses its own,
 // which `npx playwright install chromium` downloads.
@@ -677,6 +678,105 @@ await indexed.keyboard.press('ArrowDown');
 await Promise.all([indexed.waitForURL(`${base}/note/`), indexed.keyboard.press('Enter')]);
 await indexed.close();
 
+// The glossary filter: it folds the article, counts what matches, says when
+// nothing does and clears; a link to a hidden term lifts the filter and opens
+// what holds the term; printing shows everything and puts the page back.
+const glossary = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+await glossary.goto(`${base}/glossary/`);
+await glossary.waitForSelector('[data-quire-glossary-tools]');
+const filterField = '[data-quire-glossary-tools] input';
+const countText = () => glossary.textContent('[data-quire-glossary-count]');
+const hidden = (id) => glossary.$eval(`#${id}`, (heading) => heading.closest('[hidden]') !== null);
+const boxOpen = (id) => glossary.$eval(`#${id}`, (heading) => heading.closest('details').open);
+expect('the glossary counts its terms', await countText(), '4 terms');
+await glossary.fill(filterField, 'alpha');
+expect('the filter counts the terms that match', await countText(), '2 of 4 terms match');
+expect('a term that matches only by its definition shows', await hidden('term-beta'), false);
+expect('a term that does not match is hidden', await hidden('term-gamma'), true);
+expect('a section without matches is hidden', await glossary.$eval('#extras', (heading) => heading.closest('[hidden]') !== null), true);
+await glossary.fill(filterField, 'zzz');
+expect('no match says so', await countText(), 'No terms match “zzz”');
+expect('no match offers a way back', await glossary.locator('[data-quire-glossary-empty]').isVisible(), true);
+expect('expand all is off when nothing shows', await glossary.locator('button:has-text("Expand all")').isDisabled(), true);
+await glossary.click('[data-quire-glossary-clear]');
+expect('clear restores every term', await countText(), '4 terms');
+expect('clear empties the field', await glossary.inputValue(filterField), '');
+expect('clear returns focus to the field', await glossary.evaluate(() => document.activeElement?.tagName), 'INPUT');
+await glossary.fill(filterField, 'zzz');
+await glossary.press(filterField, 'Escape');
+expect('Escape clears the filter', await glossary.inputValue(filterField), '');
+
+// Expand all opens every definition that shows; collapse all closes them.
+await glossary.click('button:has-text("Expand all")');
+expect('expand all opens the definitions', await glossary.$$eval('details.quire-accordion', (boxes) => boxes.every((box) => box.open)), true);
+await glossary.click('button:has-text("Collapse all")');
+expect('collapse all closes the definitions', await glossary.$$eval('#term-alpha, #term-beta, #term-gamma, #term-delta', (headings) => headings.some((heading) => heading.closest('details').open)), false);
+
+// A link to a term the filter hides lifts the filter and opens the term.
+await glossary.fill(filterField, 'alpha');
+await glossary.click('a[href="#term-gamma"]');
+// The address changes first and the page reacts in the hashchange task after.
+await glossary.waitForFunction((selector) => document.querySelector(selector).value === '', filterField);
+expect('a link to a hidden term lifts the filter', await glossary.inputValue(filterField), '');
+expect('the lifted filter shows every term again', await countText(), '4 terms');
+expect('the linked term shows', await hidden('term-gamma'), false);
+expect('the linked term is open', await boxOpen('term-gamma'), true);
+expect('the linked term is scrolled into view', await glossary.$eval('#term-gamma', (heading) => heading.getBoundingClientRect().top < innerHeight), true);
+
+// Printing shows and opens everything, then restores the reader's view.
+await glossary.fill(filterField, 'alpha');
+await glossary.click('button:has-text("Collapse all")');
+await glossary.evaluate(() => dispatchEvent(new Event('beforeprint')));
+expect('printing shows every term', await hidden('term-gamma'), false);
+expect('printing opens every definition', await boxOpen('term-gamma'), true);
+await glossary.evaluate(() => dispatchEvent(new Event('afterprint')));
+expect('printing restores the filter', await hidden('term-gamma'), true);
+expect('printing restores the folded definitions', await boxOpen('term-alpha'), false);
+await glossary.close();
+
+// A deep link to a term that starts closed opens it on load.
+const deep = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+await deep.goto(`${base}/glossary/#term-delta`);
+await deep.waitForSelector('[data-quire-glossary-tools]');
+expect('a deep link opens its term on load', await deep.$eval('#term-delta', (heading) => heading.closest('details').open), true);
+await deep.close();
+
+// The definition dialog: it focuses Close, keeps its title and Close above a
+// body that scrolls, links to the full glossary and returns focus to the
+// element that asked for it.
+const definition = await browser.newPage({ viewport: { width: 1280, height: 700 } });
+await definition.goto(`${base}/glossary/`);
+await definition.waitForSelector('[data-define]');
+await definition.waitForFunction(() => !document.querySelector('astro-island[ssr]'));
+await definition.click('[data-define="term-alpha"]');
+await definition.waitForSelector('[data-quire-glossary-dialog]');
+expect('the dialog shows the term', await definition.textContent('[data-quire-glossary-term]'), 'Alpha');
+expect('the dialog shows the avoid list', await definition.textContent('[data-quire-glossary-avoid]'), 'Avoid: first letter');
+expect('the dialog links to the term in the full glossary', await definition.getAttribute('[data-quire-glossary-link]', 'href'), '/glossary/#term-alpha');
+expect('a glossary on this site opens in place', await definition.getAttribute('[data-quire-glossary-link]', 'target'), null);
+expect('the dialog focuses Close', await definition.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Close definition');
+await definition.keyboard.press('Escape');
+await definition.waitForSelector('[data-quire-glossary-dialog]', { state: 'detached' });
+expect('Escape returns focus to the term that opened the dialog', await definition.evaluate(() => document.activeElement?.getAttribute('data-define')), 'term-alpha');
+await definition.click('[data-define="term-delta"]');
+await definition.waitForSelector('[data-quire-glossary-dialog]');
+const parts = () => definition.evaluate(() => {
+  const body = document.querySelector('[data-quire-glossary-body]');
+  const close = document.querySelector('[aria-label="Close definition"]').getBoundingClientRect();
+  const title = document.querySelector('[data-quire-glossary-term]').getBoundingClientRect();
+  return { scrolls: body.scrollHeight > body.clientHeight, bodyTop: body.getBoundingClientRect().top, closeBottom: close.bottom, closeTop: close.top, titleTop: title.top };
+});
+const atTop = await parts();
+expect('a long definition scrolls in the body', atTop.scrolls, true);
+expect('Close sits above the body', atTop.closeBottom <= atTop.bodyTop, true);
+await definition.$eval('[data-quire-glossary-body]', (body) => body.scrollTo(0, body.scrollHeight));
+const atBottom = await parts();
+expect('Close and the title stay put while the body scrolls', [atBottom.closeTop, atBottom.titleTop].join(), [atTop.closeTop, atTop.titleTop].join());
+await definition.click('[aria-label="Close definition"]');
+await definition.waitForSelector('[data-quire-glossary-dialog]', { state: 'detached' });
+expect('Close returns focus to the term that opened the dialog', await definition.evaluate(() => document.activeElement?.getAttribute('data-define')), 'term-delta');
+await definition.close();
+
 // What a reader downloads: the page's scripts, compressed, before and after
 // the search is first used. The budget catches a framework or kit grown by
 // accident; the figures are printed for comparison. The page that searches
@@ -706,11 +806,23 @@ const weigh = async (path, query) => {
   return { loaded, used: total(true), engine: total(false) };
 };
 const kB = (bytes) => `${(bytes / 1024).toFixed(1)} kB`;
-for (const [label, path, query] of [['endpoint', '/guide/', 'tables'], ['Pagefind source', '/indexed/', 'page']]) {
+for (const [label, path, query] of [['endpoint', '/guide/', 'tables'], ['Pagefind source', '/indexed/', 'page'], ['glossary', '/glossary/']]) {
   const { loaded, used, engine } = await weigh(path, query);
-  console.log(`check-browser: ${label} page: quire's scripts ${kB(loaded)} gzip on load, ${kB(used)} after a search${engine ? `, plus Pagefind's ${kB(engine)}` : ''}`);
+  const afterSearch = query ? `, ${kB(used)} after a search` : '';
+  console.log(`check-browser: ${label} page: quire's scripts ${kB(loaded)} gzip on load${afterSearch}${engine ? `, plus Pagefind's ${kB(engine)}` : ''}`);
   if (used > 80 * 1024) problems.push(`the ${label} page downloads ${kB(used)} of compressed scripts, over the 80 kB budget`);
   if (engine > 32 * 1024) problems.push(`the ${label} page downloads ${kB(engine)} of Pagefind's compressed scripts, over the 32 kB budget`);
+}
+
+// The glossary components' own scripts, apart from the Vue runtime and the
+// dialog kit that Search shares, so a site can compare them with its copies.
+// The definition dialog is counted in the example's small wrapper around it.
+const { readdirSync, readFileSync } = await import('node:fs');
+const built = join(site, '_astro');
+for (const [label, prefix] of [['GlossaryFilter', 'GlossaryFilter.'], ['GlossaryDefinition with the example wrapper', 'GlossaryDialogDemo.']]) {
+  const file = readdirSync(built).find((name) => name.startsWith(prefix) && name.endsWith('.js'));
+  const bytes = readFileSync(join(built, file));
+  console.log(`check-browser: ${label}: ${kB(bytes.length)} raw, ${kB(gzipSync(bytes).length)} gzip`);
 }
 
 await browser.close();
@@ -719,4 +831,4 @@ if (problems.length) {
   for (const problem of problems) console.error(`check-browser: ${problem}`);
   process.exit(1);
 }
-console.log('check-browser: themes, code, shell, menu, theme switch, sidebar, contents tree, navigation style, narrow screens and focus, search (endpoint, source, site-driven and Pagefind), tables and source lines ok');
+console.log('check-browser: themes, code, shell, menu, theme switch, sidebar, contents tree, navigation style, narrow screens and focus, search (endpoint, source, site-driven and Pagefind), glossary filter and definition, tables and source lines ok');
