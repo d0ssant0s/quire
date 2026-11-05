@@ -109,6 +109,7 @@ await phone.waitForFunction(() => document.querySelector('[data-quire-sidebar]')
 const opened = await phone.$eval('[data-quire-sidebar]', (element) => element.getBoundingClientRect().left);
 expect('phone sidebar opens at the left edge', opened, 0);
 expect('phone scrim shows behind the open sidebar', await style(phone, '[data-quire-scrim]', 'display'), 'block');
+expect('the phone drawer keeps its scroll from the page behind', await style(phone, '[data-quire-sidebar]', 'overscroll-behavior-y'), 'contain');
 await phone.close();
 
 // A linked source line is highlighted and numbered.
@@ -189,6 +190,70 @@ else {
   expect('contents marks the heading being read', await reading.$eval('[data-quire-contents] a[aria-current=true]', (link) => link.hash.slice(1)), listed[1]);
 }
 await reading.close();
+
+// The sidebar and the article scroll on their own: a wheel at the end of one
+// does not carry on into the other, the header stays in view, and a heading
+// link still lands below the header. The example's long group is opened and the
+// article padded, so both overflow whatever the window's height.
+const tall = () => {
+  const filler = document.createElement('div');
+  filler.style.height = '4000px';
+  document.querySelector('.quire-prose').append(filler);
+};
+const scrolling = await open({ width: 1440 });
+await scrolling.evaluate(() => {
+  for (const group of document.querySelectorAll('[data-quire-sidebar] details')) group.open = true;
+});
+await scrolling.evaluate(tall);
+const offsets = () => scrolling.evaluate(() => ({
+  page: Math.round(scrollY),
+  sidebar: Math.round(document.querySelector('[data-quire-sidebar]').scrollTop),
+}));
+const room = await scrolling.evaluate(() => {
+  const box = document.querySelector('[data-quire-sidebar]');
+  return { sidebar: box.scrollHeight - box.clientHeight, page: document.documentElement.scrollHeight - innerHeight };
+});
+if (room.sidebar < 200 || room.page < 400) problems.push(`the scroll check needs a long sidebar and article (${room.sidebar}px and ${room.page}px to scroll)`);
+else {
+  const wheel = async (x, delta, times) => {
+    await scrolling.mouse.move(x, 450);
+    for (let step = 0; step < times; step += 1) {
+      await scrolling.mouse.wheel(0, delta);
+      await scrolling.waitForTimeout(60);
+    }
+    await scrolling.waitForTimeout(150);
+  };
+  // Wheel over the sidebar, well past its end.
+  await wheel(100, 600, 6);
+  let now = await offsets();
+  expect('the sidebar scrolls to its end under the wheel', now.sidebar, room.sidebar);
+  expect('the sidebar at its end does not scroll the article', now.page, 0);
+  // Wheel over the article scrolls the article and leaves the sidebar where it was.
+  await wheel(700, 600, 1);
+  now = await offsets();
+  if (now.page <= 0) problems.push('the wheel over the article does not scroll it');
+  expect('the article scrolling leaves the sidebar alone', now.sidebar, room.sidebar);
+  expect('the header stays in view while the article scrolls', await scrolling.$eval('header', (header) => Math.round(header.getBoundingClientRect().top)), 0);
+  // At the top of the sidebar, a wheel up does not scroll the article back.
+  await scrolling.evaluate(() => { document.querySelector('[data-quire-sidebar]').scrollTop = 0; });
+  const read = now.page;
+  await wheel(100, -600, 3);
+  expect('the sidebar at its top does not scroll the article back', (await offsets()).page, read);
+}
+// Printing runs the whole article across pages: nothing clips it to a scroll box.
+await scrolling.emulateMedia({ media: 'print' });
+expect('print leaves the article in the page flow', await scrolling.evaluate(() => document.documentElement.scrollHeight >= document.querySelector('.quire-prose').getBoundingClientRect().height), true);
+await scrolling.close();
+
+// A heading link lands the heading clear of the header, with the article long.
+const deepLinked = await open({ width: 1440 });
+const target = await deepLinked.$$eval('.quire-prose :is(h2, h3)[id]', (elements) => elements.at(-1)?.id);
+await deepLinked.evaluate(tall);
+await deepLinked.evaluate((id) => { location.hash = id; }, target);
+await deepLinked.waitForTimeout(150);
+const landed = await deepLinked.evaluate((id) => document.getElementById(id).getBoundingClientRect().top, target);
+if (landed < 52 || landed > 200) problems.push(`a heading link lands ${Math.round(landed)}px from the top, not clear of the 52px header`);
+await deepLinked.close();
 
 // A rail slot filled only when the page has headings: without them the shell
 // has no rail column, so the article is not squeezed beside an empty one.
