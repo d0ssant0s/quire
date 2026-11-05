@@ -8,7 +8,11 @@
 // unless `main.id` says otherwise) for Header's skip link, and takes focus
 // without a ring. The sidebar and the rail scroll in their own boxes and keep
 // a wheel or swipe at their ends from moving the page; the article scrolls the
-// window, with the header held at its top.
+// window, with the header held at its top, and neither panel moves while it
+// does, from the top of the article to its end, whatever follows the shell. The
+// panels stay in the window to the page's end, so the sidebar covers the left
+// of anything after the shell; a footer that must be read whole belongs inside
+// the article.
 //
 // A Header in the `header` slot is framed: on a desktop the sidebar runs the
 // window's full height on its own surface and the header starts at its edge,
@@ -53,9 +57,27 @@ const columns = sidebar
   : rail
     ? 'xl:grid-cols-[minmax(0,1fr)_248px]'
     : '';
+// The panels do not count towards the shell's height (see `hold`), so the shell
+// keeps the least height they gave it: a short article leaves whatever follows
+// the shell below the panels' foot, as it did when they sized the shell.
+const height = sidebar
+  ? rail
+    ? 'lg:min-h-[calc(100vh-var(--quire-header))] lg:sidebar-collapsed:min-h-0 xl:sidebar-collapsed:min-h-[calc(100vh-var(--quire-header))]'
+    : 'lg:min-h-[calc(100vh-var(--quire-header))] lg:sidebar-collapsed:min-h-0'
+  : rail
+    ? 'xl:min-h-[calc(100vh-var(--quire-header))]'
+    : '';
 // overscroll-y-contain keeps a wheel or swipe at the end of either box from
 // scrolling the page behind it.
 const side = 'top-(--quire-header) h-[calc(100vh-var(--quire-header))] overflow-y-auto overscroll-y-contain';
+// A sticky box may not leave its grid area, and the area ends with the shell, so
+// anything after the shell, such as a footer or the fraction a page's height
+// rounds away, would push the panel up once the article ends. A bottom margin
+// of the window's height puts the end of the box the grid holds the panel in
+// above the panel's own foot, so the panel stays at the window's top until the
+// page itself ends. The margin sits on the panel, whose own height it leaves
+// alone. Below lg the sidebar is fixed and needs none.
+const hold = '-mb-[100vh]';
 // Framed, the desktop sidebar rises into the header's row and fills the window.
 const fullHeight = 'lg:top-0 lg:-mt-(--quire-header) lg:h-screen';
 // Below lg the sidebar slides over the page. Closed, it is hidden as well as
@@ -68,12 +90,12 @@ const drawer = [
 ];
 // The sidebar and its resize handle share the first cell, so the handle sits on
 // the sidebar's edge.
-const column = 'lg:col-start-1 lg:row-start-1 lg:visible lg:sticky lg:z-auto lg:w-auto lg:translate-x-0 lg:border-r lg:border-line lg:transition-none lg:sidebar-open:shadow-none lg:sidebar-collapsed:hidden';
+const column = 'lg:-mb-[100vh] lg:col-start-1 lg:row-start-1 lg:visible lg:sticky lg:z-auto lg:w-auto lg:translate-x-0 lg:border-r lg:border-line lg:transition-none lg:sidebar-open:shadow-none lg:sidebar-collapsed:hidden';
 ---
 
 <div data-quire-frame={framed ? frame : undefined} class="contents">
   {framed && <slot name="header" />}
-  <div data-quire-shell class:list={['grid grid-cols-[minmax(0,1fr)]', columns, className]}>
+  <div data-quire-shell class:list={['grid grid-cols-[minmax(0,1fr)]', columns, height, className]}>
     {sidebar && (
       <div
         id="quire-sidebar"
@@ -96,7 +118,7 @@ const column = 'lg:col-start-1 lg:row-start-1 lg:visible lg:sticky lg:z-auto lg:
         aria-label="Resize navigation"
         tabindex="0"
         class:list={[
-          'group sticky top-(--quire-header) z-40 hidden h-[calc(100vh-var(--quire-header))] w-2 translate-x-1/2 cursor-col-resize touch-none justify-self-end focus:outline-none lg:col-start-1 lg:row-start-1 lg:block lg:sidebar-collapsed:hidden',
+          'group sticky top-(--quire-header) lg:-mb-[100vh] z-40 hidden h-[calc(100vh-var(--quire-header))] w-2 translate-x-1/2 cursor-col-resize touch-none justify-self-end focus:outline-none lg:col-start-1 lg:row-start-1 lg:block lg:sidebar-collapsed:hidden',
           framed && fullHeight,
         ]}
       ><span class="absolute inset-y-0 left-1/2 w-[2px] -translate-x-1/2 group-hover:bg-line-strong group-focus-visible:bg-accent group-data-dragging:bg-accent"></span></div>
@@ -109,7 +131,7 @@ const column = 'lg:col-start-1 lg:row-start-1 lg:visible lg:sticky lg:z-auto lg:
       data-quire-main
       class:list={['w-full min-w-0 justify-self-center px-5 pt-7 pb-24 focus:outline-none md:px-12', wide ? 'max-w-none' : 'max-w-[980px]', mainClass]}
     ><slot /></main>
-    {rail && <div data-quire-rail class:list={[side, 'sticky hidden p-[12px] xl:block']}><Fragment set:html={railHtml} /></div>}
+    {rail && <div data-quire-rail class:list={[side, hold, 'sticky hidden p-[12px] xl:block']}><Fragment set:html={railHtml} /></div>}
   </div>
 </div>
 
