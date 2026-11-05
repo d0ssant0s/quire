@@ -48,6 +48,7 @@
   --text-xs: var(--quire-text-xs);
   --text-sm: var(--quire-text-sm);
   --color-bg: var(--quire-bg);
+  --color-sidebar: var(--quire-sidebar);
   --color-surface: var(--quire-surface);
   --color-subtle: var(--quire-subtle);
   --color-fg: var(--quire-fg);
@@ -68,6 +69,21 @@
   --color-neutral: var(--quire-neutral);
   --color-neutral-soft: var(--quire-neutral-soft);
   --radius-card: var(--quire-radius);
+}
+
+/* Page's frame around a header in its `header` slot: on a desktop the sidebar
+   fills the window's height, so the header starts at the sidebar's edge, and
+   the site's name moves from the header to the top of the sidebar. A
+   collapsed sidebar gives the header its width and its name back. */
+@layer components {
+  @media (min-width: 64rem) {
+    :root:not([data-sidebar-collapsed]) [data-quire-frame~='sidebar'] > header {
+      margin-left: var(--quire-sidebar-width);
+    }
+    :root:not([data-sidebar-collapsed]) [data-quire-frame~='brand'] > header [data-quire-brand] {
+      display: none;
+    }
+  }
 }
 
 @layer base {

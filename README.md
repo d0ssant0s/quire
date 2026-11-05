@@ -75,8 +75,9 @@ import ThemeScript from '@d0ssant0s/quire/components/ThemeScript.astro';
     <ThemeScript />
   </head>
   <body>
-    <Header menu><a href="/">My docs</a></Header>
     <Page>
+      <Header slot="header" menu><a href="/" data-quire-brand>My docs</a></Header>
+      <a slot="brand" href="/">My docs</a>
       <Sidebar slot="sidebar" items={sections} current={Astro.url.pathname} />
       <NarrowContents headings={headings} />
       <article class="quire-prose"><slot /></article>
@@ -92,7 +93,7 @@ import ThemeScript from '@d0ssant0s/quire/components/ThemeScript.astro';
 | `Header` | The sticky header: a menu button when `menu` is set, the default slot for the site's name and links, an `end` slot for controls such as search, and the theme switch. It starts with a skip link to `<main>`, the first stop for a keyboard (`skip` sets its text, `false` drops it; `skipTo` names the target id, default `quire-main`) |
 | `SkipLink` | The skip link on its own (`text`, `target`), for a site without `Header`; put it first in `<body>` |
 | `ThemeSwitch` | Steps through the system scheme, light and dark, and remembers a pinned choice; the header includes it |
-| `Page` | The grid: a `sidebar` slot, the article, and a `rail` slot that appears once there is room; `wide` gives the article the whole width. `main` passes attributes to `<main>`, whose id defaults to `quire-main` |
+| `Page` | The grid: a `sidebar` slot, the article, and a `rail` slot that appears once there is room; `wide` gives the article the whole width. `main` passes attributes to `<main>`, whose id defaults to `quire-main`. A `Header` in the `header` slot is framed, and a `brand` slot heads the sidebar; see below |
 | `Sidebar` | Section navigation from a tree of `NavItem` links and groups, marking the current page and scrolling it into view; groups the reader opens or closes stay so for the browser session |
 | `Contents` | The page's headings, from Astro's Markdown headings, marking the one being read; `tree` nests them in branches that open as the reader reaches them, for long pages |
 | `NarrowContents` | The same headings in a compact disclosure for the top of the article, shown only below the width where the rail appears; a choice or Escape closes it. Give it the rail's `minDepth` and `maxDepth` |
@@ -108,6 +109,17 @@ The sidebar and the contents rail share one row style: one line of 14px text
 in a 32 px row. A title too long for its row ends in an ellipsis and stays
 whole in the link's `title` and accessible name. The rail's contents sit in a
 card.
+
+A `Header` in `Page`'s `header` slot is framed. On a desktop the sidebar
+fills the window's height on its own surface (`--quire-sidebar`) with an edge
+on its right, and the header starts at that edge, so the page reads as two
+panes. The `brand` slot, usually the site's name, heads the sidebar there; the
+header's element marked `data-quire-brand` steps aside while the sidebar shows
+the name. Collapsing the sidebar gives the header its full width and its name
+back. On a phone the header spans the window and the sidebar slides in beneath
+it. A `Header` placed before `Page` instead spans the window above the shell.
+The header draws no bottom edge in either case: the page beneath it has the
+same background.
 
 `ThemeScript`, `Header`, `ThemeSwitch` and `Sidebar` take a `storage` prefix
 for their browser storage keys, `<storage>-theme`, `<storage>-sidebar` and

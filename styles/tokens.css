@@ -11,14 +11,17 @@
 :root {
   color-scheme: light dark;
 
-  /* Surfaces and text. */
-  --quire-bg: light-dark(#fcfcfc, #0a0a0a);
+  /* Surfaces and text. The sidebar is a shade darker than the page in light
+     mode, so the frame reads as two panes without a shadow; in dark mode both
+     are black and only the border separates them. */
+  --quire-bg: light-dark(#fcfcfc, #000000);
+  --quire-sidebar: light-dark(#fafafa, #000000);
   --quire-surface: light-dark(#ffffff, #111111);
   --quire-subtle: light-dark(#f4f4f5, #171717);
   --quire-fg: light-dark(#27272a, #f5f5f5);
   --quire-muted: light-dark(#71717a, #a1a1aa);
   --quire-faint: light-dark(#a1a1aa, #71717a);
-  --quire-border: light-dark(#e4e4e7, #1f1f1f);
+  --quire-border: light-dark(#e4e4e7, rgb(255 255 255 / 0.08));
   --quire-border-strong: light-dark(#d4d4d8, #2e2e2e);
 
   /* Interaction. */
@@ -46,6 +49,7 @@
 
   /* Layout. */
   --quire-header: 52px;
+  --quire-sidebar-width: 256px;
   --quire-measure: 44rem;
   --quire-radius: 10px;
 }

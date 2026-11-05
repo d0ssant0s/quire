@@ -18,7 +18,7 @@ for (const [, name, value] of read('tokens.css').matchAll(/(--quire-[a-z-]+):\s*
   if (declared.has(name)) problems.push(`${name} is declared twice in tokens.css`);
   declared.set(name, value.trim());
 }
-const colours = [...declared].filter(([name]) => !/font|text-|header|measure|radius/.test(name));
+const colours = [...declared].filter(([name]) => !/font|text-|header|measure|radius|width/.test(name));
 for (const [name, value] of colours) {
   if (!value.startsWith('light-dark(')) problems.push(`${name} is not written as light-dark()`);
 }

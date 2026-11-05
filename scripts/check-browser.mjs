@@ -63,8 +63,8 @@ const style = (page, selector, property, pseudo = null) =>
 // Themes: a pinned theme wins over the system scheme; without one the system decides.
 for (const [label, options, background] of [
   ['light theme on a dark system', { scheme: 'dark', theme: 'light' }, 'rgb(252, 252, 252)'],
-  ['dark theme on a light system', { scheme: 'light', theme: 'dark' }, 'rgb(10, 10, 10)'],
-  ['no theme on a dark system', { scheme: 'dark' }, 'rgb(10, 10, 10)'],
+  ['dark theme on a light system', { scheme: 'light', theme: 'dark' }, 'rgb(0, 0, 0)'],
+  ['no theme on a dark system', { scheme: 'dark' }, 'rgb(0, 0, 0)'],
   ['no theme on a light system', { scheme: 'light' }, 'rgb(252, 252, 252)'],
 ]) {
   const page = await open(options);
@@ -287,7 +287,7 @@ const edges = await styled.evaluate(() =>
 );
 expect('page rows and group labels share one left edge', new Set(edges.split(',')).size, 1);
 expect('sidebar width', await styled.$eval('[data-quire-sidebar]', (element) => element.getBoundingClientRect().width), 256);
-expect('sidebar right border', await style(styled, '[data-quire-nav]', 'border-right-width'), '1px');
+expect('sidebar right border', await style(styled, '[data-quire-sidebar]', 'border-right-width'), '1px');
 expect('rail card radius', await style(styled, '[data-quire-contents]', 'border-radius'), '16px');
 expect('rail card border', await style(styled, '[data-quire-contents]', 'border-top-width'), '1px');
 const cardEdge = await style(styled, '[data-quire-contents]', 'border-top-color');
@@ -295,6 +295,43 @@ const cardEdge = await style(styled, '[data-quire-contents]', 'border-top-color'
 const alpha = Number(cardEdge.match(/\/ ([\d.]+)\)$/)?.[1] ?? 1);
 if (!(alpha > 0 && alpha < 1)) problems.push(`rail card border is not translucent: ${cardEdge}`);
 await styled.close();
+
+// The frame: a header in Page's header slot sits beside a sidebar that fills
+// the window's height on its own surface, headed by the site's name; the
+// header draws no bottom edge. Collapsing the sidebar gives the header the
+// full width and the name back, and scrolling keeps both in place.
+const box = (page, selector) => page.$eval(selector, (element) => {
+  const { left, top, height } = element.getBoundingClientRect();
+  return { left: Math.round(left), top: Math.round(top), height: Math.round(height) };
+});
+const shown = (page, selector) => page.$eval(selector, (element) => element.getBoundingClientRect().width > 0 && getComputedStyle(element).display !== 'none');
+const framed = await open({ width: 1440, theme: 'light' });
+expect('framed sidebar starts at the top', (await box(framed, '[data-quire-sidebar]')).top, 0);
+expect('framed sidebar fills the window', (await box(framed, '[data-quire-sidebar]')).height, 900);
+expect('framed header starts at the sidebar edge', (await box(framed, 'header')).left, 256);
+expect('framed header has no bottom edge', await style(framed, 'header', 'border-bottom-width'), '0px');
+expect('the sidebar shows the name', await shown(framed, '[data-quire-sidebar-brand]'), true);
+expect('the header hides its name beside the sidebar', await shown(framed, 'header [data-quire-brand]'), false);
+expect('the sidebar has its own surface', await style(framed, '[data-quire-sidebar]', 'background-color'), 'rgb(250, 250, 250)');
+expect('the page keeps its background', await style(framed, 'html', 'background-color'), 'rgb(252, 252, 252)');
+await framed.evaluate(() => window.scrollTo(0, 600));
+expect('the sidebar stays at the top while scrolling', (await box(framed, '[data-quire-sidebar]')).top, 0);
+expect('the header stays at the top while scrolling', (await box(framed, 'header')).top, 0);
+await framed.evaluate(() => window.scrollTo(0, 0));
+await framed.click('[data-quire-menu]');
+expect('a collapsed sidebar gives the header the width', (await box(framed, 'header')).left, 0);
+expect('a collapsed sidebar gives the header its name', await shown(framed, 'header [data-quire-brand]'), true);
+await framed.click('[data-quire-menu]');
+await framed.close();
+const framedDark = await open({ width: 1440, theme: 'dark' });
+const edge = await style(framedDark, '[data-quire-sidebar]', 'border-right-color');
+const edgeAlpha = Number(edge.match(/,\s*([\d.]+)\)$/)?.[1] ?? edge.match(/\/ ([\d.]+)\)$/)?.[1] ?? 1);
+if (!(edgeAlpha > 0 && edgeAlpha < 0.2)) problems.push(`dark sidebar edge is not a faint translucent line: ${edge}`);
+await framedDark.close();
+const framedPhone = await open({ width: 375 });
+expect('a phone header spans the window', (await box(framedPhone, 'header')).left, 0);
+expect('a phone header keeps its name', await shown(framedPhone, 'header [data-quire-brand]'), true);
+await framedPhone.close();
 
 // Narrow screens: the closed sidebar is out of the tab order, focus follows it
 // as it opens and closes, a skip link leads to <main>, and a disclosure holds
