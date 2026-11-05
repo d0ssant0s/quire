@@ -1,0 +1,188 @@
+---
+// Two small controls on the articles a site selects, added by one script so
+// the served page, its search index and its anchors stay exactly as built:
+//
+// - Each heading that has an id gets a button that copies the heading's own
+//   address. quire makes and changes no id.
+// - Each highlighted code block gets a button that copies the code as the
+//   author wrote it: the block's text, not its coloured spans.
+//
+// Every outcome is spoken through the status region below and shown on the
+// button. Where the async clipboard does not exist, as on plain HTTP, the text
+// is copied by selecting it in an off-screen field. When the browser refuses
+// the copy, the outcome says what is left to do and leaves the thing to copy in
+// place: the address bar holds the heading's address, and the code is selected.
+// Every label is set as text or as an attribute, never as markup, so a heading
+// or a code language cannot inject any through these controls.
+//
+// The site chooses where it applies: put the component on the pages that should
+// have the controls, and give `selector` for the articles on them. Headings in
+// a <details>, and anything inside an island or an element marked
+// `data-quire-no-controls`, are left alone. One instance per page.
+interface Props {
+  /** The articles that get the controls: a CSS selector. */
+  selector?: string;
+}
+const { selector = 'article.quire-prose' } = Astro.props;
+---
+
+<div class="sr-only" role="status" aria-live="polite" data-quire-copy-status data-quire-copy-selector={selector} data-pagefind-ignore></div>
+
+<script>
+  const status = document.querySelector<HTMLElement>('[data-quire-copy-status]');
+  const articles = document.querySelectorAll<HTMLElement>(status?.dataset.quireCopySelector ?? 'article.quire-prose');
+  // How long a button keeps showing its outcome.
+  const SHOWN_MS = 2500;
+  const SKIPPED = 'astro-island, [data-quire-no-controls]';
+  const ICON_ATTRIBUTES =
+    'viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+  const ICONS = {
+    heading: `<svg ${ICON_ATTRIBUTES}><path d="M6.5 9.5a3 3 0 0 0 4.2 0l2-2a3 3 0 0 0-4.2-4.2l-.6.6"/><path d="M9.5 6.5a3 3 0 0 0-4.2 0l-2 2a3 3 0 0 0 4.2 4.2l.6-.6"/></svg>`,
+    code: `<svg ${ICON_ATTRIBUTES}><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></svg>`,
+  };
+
+  type Kind = keyof typeof ICONS;
+
+  function announce(message: string) {
+    if (!status) return;
+    if (status.textContent !== message) {
+      status.textContent = message;
+      return;
+    }
+    // The same message again is only spoken if the text changes in between.
+    status.textContent = '';
+    requestAnimationFrame(() => {
+      status.textContent = message;
+    });
+  }
+
+  // Copies by selecting the text in an off-screen field, for where the async
+  // clipboard is absent.
+  function copyBySelection(text: string): boolean {
+    const field = document.createElement('textarea');
+    field.value = text;
+    field.readOnly = true;
+    field.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0';
+    document.body.append(field);
+    const before = document.activeElement as HTMLElement | null;
+    field.select();
+    let copied = false;
+    try {
+      copied = document.execCommand('copy');
+    } catch {
+      copied = false;
+    }
+    field.remove();
+    before?.focus({ preventScroll: true });
+    return copied;
+  }
+
+  async function copyText(text: string): Promise<boolean> {
+    if (window.isSecureContext && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        // Refused; the selection route may still succeed.
+      }
+    }
+    return copyBySelection(text);
+  }
+
+  const timers = new WeakMap<HTMLElement, number>();
+
+  // Shows the outcome on the button for a moment, then restores its resting label.
+  function show(button: HTMLButtonElement, outcome: 'copied' | 'failed') {
+    const label = button.querySelector<HTMLElement>('[data-quire-copy-label]');
+    button.dataset.state = outcome;
+    if (label) label.textContent = outcome === 'copied' ? 'Copied' : 'Copy failed';
+    clearTimeout(timers.get(button));
+    const rest = () => {
+      delete button.dataset.state;
+      if (label) label.textContent = '';
+    };
+    timers.set(button, window.setTimeout(rest, SHOWN_MS));
+  }
+
+  function makeButton(kind: Kind, name: string): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `quire-copy-control quire-copy-control--${kind}`;
+    button.setAttribute('aria-label', name);
+    const icon = document.createElement('span');
+    icon.className = 'quire-copy-control__icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.innerHTML = ICONS[kind];
+    const label = document.createElement('span');
+    label.className = 'quire-copy-control__label';
+    label.dataset.quireCopyLabel = '';
+    label.setAttribute('aria-hidden', 'true');
+    button.append(icon, label);
+    return button;
+  }
+
+  function headingAddress(heading: HTMLElement): string {
+    const address = new URL(location.href);
+    address.hash = heading.id;
+    return address.href;
+  }
+
+  function addHeadingControl(heading: HTMLElement) {
+    const title = (heading.textContent ?? '').trim();
+    const button = makeButton('heading', title ? `Copy link to section: ${title}` : 'Copy link to this section');
+    heading.append(button);
+    button.addEventListener('click', async () => {
+      const address = headingAddress(heading);
+      if (await copyText(address)) {
+        show(button, 'copied');
+        announce(`Link to section ${title} copied.`);
+        return;
+      }
+      // Nothing reached the clipboard, so put the address where it can be
+      // taken: the address bar, without moving the page.
+      history.replaceState(history.state, '', address);
+      show(button, 'failed');
+      announce(`Copy was blocked. The address bar now holds the link to section ${title}.`);
+    });
+  }
+
+  function selectContents(element: Element) {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const selection = getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  }
+
+  function addCodeControl(block: HTMLPreElement, code: HTMLElement) {
+    const language = block.dataset.language ?? '';
+    const named = language && language !== 'plaintext' && language !== 'text';
+    const button = makeButton('code', named ? `Copy ${language} code` : 'Copy code');
+    const frame = document.createElement('div');
+    frame.className = 'quire-code-frame';
+    block.replaceWith(frame);
+    frame.append(block, button);
+    button.addEventListener('click', async () => {
+      if (await copyText(code.textContent ?? '')) {
+        show(button, 'copied');
+        announce('Code copied.');
+        return;
+      }
+      // Leave the code selected so the reader's own copy shortcut finishes it.
+      selectContents(code);
+      show(button, 'failed');
+      announce('Copy was blocked. The code is selected: use your copy shortcut to copy it.');
+    });
+  }
+
+  for (const article of articles) {
+    for (const heading of article.querySelectorAll<HTMLElement>(':is(h2, h3, h4, h5, h6)[id]')) {
+      // A heading that is a <details> summary toggles it; a button there would fight that.
+      if (!heading.closest(`details, ${SKIPPED}`)) addHeadingControl(heading);
+    }
+    for (const block of article.querySelectorAll<HTMLPreElement>('pre.astro-code')) {
+      const code = block.querySelector('code');
+      if (code && !block.closest(SKIPPED)) addCodeControl(block, code);
+    }
+  }
+</script>

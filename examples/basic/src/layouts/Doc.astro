@@ -1,6 +1,7 @@
 ---
 import type { MarkdownHeading } from 'astro';
 import type { NavItem } from '@d0ssant0s/quire';
+import ArticleControls from '@d0ssant0s/quire/components/ArticleControls.astro';
 import Contents from '@d0ssant0s/quire/components/Contents.astro';
 import Header from '@d0ssant0s/quire/components/Header.astro';
 import NarrowContents from '@d0ssant0s/quire/components/NarrowContents.astro';
@@ -10,7 +11,7 @@ import ThemeScript from '@d0ssant0s/quire/components/ThemeScript.astro';
 import Search from '@d0ssant0s/quire/vue/Search.vue';
 import '../styles/site.css';
 
-interface Props { frontmatter: { title: string; kind?: string }; headings: MarkdownHeading[] }
+interface Props { frontmatter: { title: string; kind?: string; controls?: boolean }; headings: MarkdownHeading[] }
 const { frontmatter, headings } = Astro.props;
 // Icons are the site's own SVG markup; quire ships none, and draws them on groups.
 const svg = (path: string) => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>`;
@@ -45,5 +46,7 @@ const sections: NavItem[] = [
       </div>
       {headings.length > 0 && <Contents slot="rail" headings={headings} tree />}
     </Page>
+    {/* The site decides which articles get the copy controls. */}
+    {frontmatter.controls !== false && <ArticleControls />}
   </body>
 </html>
