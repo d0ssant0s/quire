@@ -89,9 +89,10 @@ import ThemeScript from '@d0ssant0s/quire/components/ThemeScript.astro';
 | Component | What it does |
 | --- | --- |
 | `ThemeScript` | Restores the reader's theme and collapsed sidebar before first paint; put it in `<head>` |
-| `Header` | The sticky header: a menu button when `menu` is set, the default slot for the site's name and links, an `end` slot for controls such as search, and the theme switch |
+| `Header` | The sticky header: a menu button when `menu` is set, the default slot for the site's name and links, an `end` slot for controls such as search, and the theme switch. It starts with a skip link to `<main>`, the first stop for a keyboard (`skip` sets its text, `false` drops it; `skipTo` names the target id, default `quire-main`) |
+| `SkipLink` | The skip link on its own (`text`, `target`), for a site without `Header`; put it first in `<body>` |
 | `ThemeSwitch` | Steps through the system scheme, light and dark, and remembers a pinned choice; the header includes it |
-| `Page` | The grid: a `sidebar` slot, the article, and a `rail` slot that appears once there is room; `wide` gives the article the whole width. It opens with a skip link to `<main>` (`skip` sets its text, `false` drops it); `main` passes attributes to `<main>`, whose id defaults to `quire-main` |
+| `Page` | The grid: a `sidebar` slot, the article, and a `rail` slot that appears once there is room; `wide` gives the article the whole width. `main` passes attributes to `<main>`, whose id defaults to `quire-main` |
 | `Sidebar` | Section navigation from a tree of `NavItem` links and groups, marking the current page and scrolling it into view; groups the reader opens or closes stay so for the browser session |
 | `Contents` | The page's headings, from Astro's Markdown headings, marking the one being read; `tree` nests them in branches that open as the reader reaches them, for long pages |
 | `NarrowContents` | The same headings in a compact disclosure for the top of the article, shown only below the width where the rail appears; a choice or Escape closes it. Give it the rail's `minDepth` and `maxDepth` |

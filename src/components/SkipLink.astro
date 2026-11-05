@@ -1,0 +1,15 @@
+---
+// A link to the page's <main>, hidden until focused. It must be the first
+// thing a keyboard reaches, so Header renders it before itself; a site
+// without Header puts it first in <body>.
+interface Props {
+  /** The link's text. */
+  text?: string;
+  /** The id of <main>; Page gives it `quire-main` unless told otherwise. */
+  target?: string;
+}
+const { text = 'Skip to content', target = 'quire-main' } = Astro.props;
+const look = 'sr-only z-40 rounded-[6px] border border-line-strong bg-surface text-[14px] font-medium text-fg focus:not-sr-only focus:fixed focus:top-[10px] focus:left-[12px] focus:px-[12px] focus:py-[6px]';
+---
+
+<a href={`#${target}`} data-quire-skip class={look}>{text}</a>
