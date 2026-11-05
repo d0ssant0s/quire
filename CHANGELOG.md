@@ -8,6 +8,21 @@ since the previous release, grouped as Breaking changes, Features, Changed,
 Fixed and Security; `npm run changelog` shows the next one. The release page
 on GitHub carries the same section.
 
+## 0.5.0 (2026-11-05)
+
+### Features
+
+- **sidebar:** share one row style between the sidebar and the contents rail (#42)
+- **page:** add narrow-screen contents, a skip link and sidebar focus handling (#44)
+- **glossary:** add a glossary filter and a definition dialog (#40)
+- **components:** add ArticleControls for heading links and code copy (#41)
+
+### Fixed
+
+- **search:** announce the total when a source caps its results (#38)
+
+[All commits](https://github.com/d0ssant0s/quire/compare/v0.4.0...v0.5.0)
+
 ## 0.4.0 (2026-11-04)
 
 ### Features
